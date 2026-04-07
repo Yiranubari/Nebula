@@ -3,6 +3,175 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DMStatus {
+  SENT
+  FAILED
+}
+
+enum NotificationType {
+  APPROVAL_REQUEST
+  ASSIGNED
+  MENTION
+  REACTION
+}
+
+enum NotifStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  INFO
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(MEMBER)
+  avatar       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  assignedTasks      Task[]          @relation("AssignedTasks")
+  messages           Message[]
+  sentDMs            DirectMessage[] @relation("SentDMs")
+  receivedDMs        DirectMessage[] @relation("ReceivedDMs")
+  tracks             TrackMember[]
+  refreshTokens      RefreshToken[]
+  sentNotifications  Notification[]  @relation("RequesterNotifications")
+  receivedNotifications Notification[] @relation("RecipientNotifications")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Task {
+  id             String     @id @default(cuid())
+  title          String
+  description    String     @default("")
+  status         TaskStatus @default(TODO)
+  priority       Priority   @default(MEDIUM)
+  assigneeId     String?    @map("assignee_id")
+  estimatedHours Float      @default(0) @map("estimated_hours")
+  dueDate        DateTime?  @map("due_date")
+  labels         String[]
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  assignee User? @relation("AssignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@map("tasks")
+}
+
+model Track {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  members  TrackMember[]
+  messages Message[]
+
+  @@map("tracks")
+}
+
+model TrackMember {
+  trackId String @map("track_id")
+  userId  String @map("user_id")
+
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([trackId, userId])
+  @@map("track_members")
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  content     String
+  userId      String   @map("user_id")
+  trackId     String   @map("track_id")
+  parentId    String?  @map("parent_id")
+  pinned      Boolean  @default(false)
+  attachments Json?
+  reactions   Json?
+  readBy      String[] @map("read_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track   Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  parent  Message?  @relation("ThreadReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies Message[] @relation("ThreadReplies")
+
+  @@map("messages")
+}
+
+model DirectMessage {
+  id          String   @id @default(cuid())
+  content     String
+  fromUserId  String   @map("from_user_id")
+  toUserId    String   @map("to_user_id")
+  attachments Json?
+  reactions   Json?
+  readBy      String[] @map("read_by")
+  status      DMStatus @default(SENT)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  from User @relation("SentDMs", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to   User @relation("ReceivedDMs", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@map("direct_messages")
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  type        NotificationType?
+  taskId      String?           @map("task_id")
+  messageId   String?           @map("message_id")
+  trackId     String?           @map("track_id")
+  emoji       String?
+  requesterId String            @map("requester_id")
+  recipientId String?           @map("recipient_id")
+  status      NotifStatus       @default(PENDING)
+  read        Boolean           @default(false)
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  requester User  @relation("RequesterNotifications", fields: [requesterId], references: [id], onDelete: Cascade)
+  recipient User? @relation("RecipientNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }

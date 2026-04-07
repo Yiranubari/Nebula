@@ -7,6 +7,7 @@ export const env = cleanEnv(process.env, {
   }),
   PORT: port({ default: 4000 }),
   DATABASE_URL: str(),
+  DIRECT_URL: str({ default: "" }),
   JWT_SECRET: str(),
   JWT_REFRESH_SECRET: str(),
   JWT_EXPIRES_IN: str({ default: "15m" }),

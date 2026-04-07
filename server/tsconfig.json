@@ -13,6 +13,6 @@
       "@nebula/shared": ["../shared/types/index.ts"]
     }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "prisma"]
+  "include": ["src/**/*.ts", "prisma/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
