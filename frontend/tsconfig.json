@@ -13,7 +13,8 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@nebula/shared": ["../shared/types/index.ts"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true

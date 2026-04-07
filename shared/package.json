@@ -1,0 +1,19 @@
+{
+  "name": "@nebula/shared",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for the Nebula monorepo",
+  "main": "./types/index.ts",
+  "types": "./types/index.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.ts",
+      "default": "./types/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.2"
+  }
+}

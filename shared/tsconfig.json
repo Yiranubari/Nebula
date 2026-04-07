@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "composite": true,
+    "declaration": true,
+    "declarationDir": "./dist/types",
+    "outDir": "./dist",
+    "skipLibCheck": true,
+    "noEmit": false
+  },
+  "include": ["types/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
