@@ -7,9 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies (all packages)
 node_modules
+frontend/node_modules
+server/node_modules
+shared/node_modules
+
+# Build outputs
 dist
 dist-ssr
+frontend/dist
+server/dist
+shared/dist
 *.local
 
 # Editor directories and files
@@ -23,7 +32,18 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment files (all packages)
 .env
+frontend/.env
+frontend/.env.local
+server/.env
+server/.env.local
+shared/.env
 
+# Prisma
+server/prisma/migrations
+
+# Docs (not committed)
 IMPLEMENTATION_PLAN.md
 nebula-backend-roadmap.html
+ghost-roadmap-v3.html
