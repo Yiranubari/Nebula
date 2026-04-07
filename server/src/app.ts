@@ -5,6 +5,8 @@ import cookieParser from "cookie-parser";
 import { env } from "./config/env";
 import { globalRateLimiter } from "./middleware/rateLimit.middleware";
 import { errorMiddleware } from "./middleware/error.middleware";
+import authRoutes from "./modules/auth/auth.routes";
+import userRoutes from "./modules/users/users.routes";
 
 export function createApp() {
   const app = express();
@@ -24,6 +26,9 @@ export function createApp() {
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
+
+  app.use("/api/auth", authRoutes);
+  app.use("/api/users", userRoutes);
 
   app.use(errorMiddleware);
 
