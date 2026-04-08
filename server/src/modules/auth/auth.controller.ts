@@ -8,19 +8,35 @@ export class AuthController extends BaseController {
   }
 
   register = async (req: Request, res: Response) => {
-    const { user, accessToken, refreshToken } = await this.authService.register(
-      req.body
-    );
+    const result = await this.authService.register(req.body);
+    this.created(res, result);
+  };
+
+  verifyOtp = async (req: Request, res: Response) => {
+    const { user, accessToken, refreshToken, message } = await this.authService.verifyOtp(req.body);
     this.setRefreshTokenCookie(res, refreshToken);
-    this.created(res, { user, accessToken });
+    this.ok(res, { message, user, accessToken });
+  };
+
+  resendOtp = async (req: Request, res: Response) => {
+    const result = await this.authService.resendOtp(req.body);
+    this.ok(res, result);
   };
 
   login = async (req: Request, res: Response) => {
-    const { user, accessToken, refreshToken } = await this.authService.login(
-      req.body
-    );
+    const { user, accessToken, refreshToken } = await this.authService.login(req.body);
     this.setRefreshTokenCookie(res, refreshToken);
     this.ok(res, { user, accessToken });
+  };
+
+  forgotPassword = async (req: Request, res: Response) => {
+    const result = await this.authService.forgotPassword(req.body);
+    this.ok(res, result);
+  };
+
+  resetPassword = async (req: Request, res: Response) => {
+    const result = await this.authService.resetPassword(req.body);
+    this.ok(res, result);
   };
 
   refresh = async (req: Request, res: Response) => {
@@ -33,9 +49,7 @@ export class AuthController extends BaseController {
       return;
     }
 
-    const { user, accessToken, refreshToken } = await this.authService.refresh(
-      token
-    );
+    const { user, accessToken, refreshToken } = await this.authService.refresh(token);
     this.setRefreshTokenCookie(res, refreshToken);
     this.ok(res, { user, accessToken });
   };

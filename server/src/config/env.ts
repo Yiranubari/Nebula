@@ -16,4 +16,9 @@ export const env = cleanEnv(process.env, {
   CLOUDINARY_API_KEY: str({ default: "" }),
   CLOUDINARY_API_SECRET: str({ default: "" }),
   CLIENT_URL: str({ default: "http://localhost:3000" }),
+  SMTP_HOST: str({ default: "smtp.mailtrap.io" }),
+  SMTP_PORT: port({ default: 2525 }),
+  SMTP_USER: str({ default: "" }),
+  SMTP_PASS: str({ default: "" }),
+  SMTP_FROM: str({ default: "noreply@nebula.com" }),
 });
