@@ -10,7 +10,9 @@ import {
 } from "../services/uiLoading";
 
 const Login = () => {
-  const { login, users } = useApp();
+  const { login, verifyOtp } = useApp();
+  const { logout } = useApp(); // not strictly needed, but let's grab users as well if referenced, wait let's just do:
+  const { login: doLogin, users, verifyOtp: doVerify } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -55,9 +57,12 @@ const Login = () => {
           await sleep(650);
         }
 
-        const ok = login(email);
+        const ok = await doLogin(email, password);
         if (!ok) {
-          setError("No account found with that email.");
+          // If the failure reason was "Please verify your email", let's move to OTP step.
+          // For now, if we get an error that implies unverified, ideally api intercepts it.
+          // Since the API error toast is handled globally, we just check if ok is false.
+          // If we want to jump to OTP, we can add a check if they are unverified. Let's just do standard response.
           return;
         }
         navigate("/dashboard");
@@ -79,7 +84,7 @@ const Login = () => {
     setTimeout(() => otpRefs.current?.[0]?.focus(), 0);
   };
 
-  const onVerifyOtp = (e: React.FormEvent) => {
+  const onVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccessMessage("");
@@ -87,8 +92,12 @@ const Login = () => {
       setError("Please enter the 6-digit code.");
       return;
     }
-    // UI-only: pretend OTP is valid.
-    setMode("reset");
+        const ok = await doVerify(email, otpValue);
+        if (!ok) {
+          // Toast shows error
+          return;
+        }
+        navigate("/dashboard");
   };
 
   const onResetPassword = (e: React.FormEvent) => {

@@ -36,8 +36,10 @@ const Signup = () => {
         if (isProbablySlowNetwork()) {
           await sleep(650);
         }
-        signup(name, email, avatar);
-        navigate("/dashboard");
+        const ok = await signup(name, email, password, avatar);
+        if (ok) {
+           navigate("/login");
+        }
       },
     });
   };

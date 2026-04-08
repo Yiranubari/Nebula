@@ -26,6 +26,7 @@ import { Menu, Moon, Sun } from "lucide-react";
 import SearchPage from "./pages/Search";
 import { ThemeProvider } from "./context/ThemeContext";
 import { useTheme } from "./context/ThemeContext";
+import { Toaster } from "react-hot-toast";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -200,6 +201,7 @@ function App() {
       <AppProvider>
         <CallProvider>
           <HashRouter>
+            <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
             <Layout>
               <ErrorBoundary>
                 <Routes>

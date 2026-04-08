@@ -5,6 +5,8 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import toast from "react-hot-toast";
+import { api } from "../services/api";
 import {
   Task,
   User,
@@ -40,9 +42,10 @@ interface AppContextType {
   updateCurrentUser: (
     updates: Partial<Pick<User, "name" | "email" | "avatar">>
   ) => void;
-  login: (email: string) => boolean;
-  signup: (name: string, email: string, avatar?: string) => void;
-  logout: () => void;
+  login: (email: string, password?: string) => Promise<boolean>;
+  signup: (name: string, email: string, password?: string, avatar?: string) => Promise<boolean>;
+  verifyOtp: (email: string, otp: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   removeUser: (userId: string) => void;
   addTask: (task: Task) => void;
   updateTask: (task: Task) => void;
@@ -939,56 +942,58 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
     setTracks((prev) => prev.filter((t) => t.id !== trackId));
   };
 
-  const login = (email: string) => {
-    const normalized = email.trim().toLowerCase();
-    const user = users.find((u) => u.email.toLowerCase() === normalized);
-    if (!user) return false;
-    setCurrentUser(user);
-    setIsAuthenticated(true);
+  const login = async (email: string, password?: string) => {
     try {
-      window.localStorage.setItem(USER_STORAGE_KEY, user.id);
-      window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
-    } catch {}
-    return true;
-  };
-
-  const signup = (name: string, email: string, avatar?: string) => {
-    const id = `u-${Date.now()}`;
-    const safeAvatar =
-      (avatar && avatar.trim()) ||
-      `https://picsum.photos/100/100?random=${Math.floor(
-        Math.random() * 1000
-      )}`;
-    const user: User = {
-      id,
-      name: name.trim(),
-      email: email.trim(),
-      role: "MEMBER",
-      avatar: safeAvatar,
-    };
-    setUsers((prev) => {
-      if (
-        prev.some((u) => u.email.toLowerCase() === user.email.toLowerCase())
-      ) {
-        return prev;
-      }
-      const next = [...prev, user];
-      setCurrentUser(user);
+      const res = await api.post("/auth/login", { email, password });
       setIsAuthenticated(true);
-      try {
-        window.localStorage.setItem(USER_STORAGE_KEY, user.id);
-        window.localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(next));
-        window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
-      } catch {}
-      return next;
-    });
+      if (res.data.user) {
+        setCurrentUser(res.data.user);
+        window.localStorage.setItem(USER_STORAGE_KEY, res.data.user.id);
+      }
+      window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
+      toast.success("Successfully logged in");
+      return true;
+    } catch (err: any) {
+      if (err.response?.status !== 403) {
+        // error messages are handled by api interceptor
+      }
+      return false;
+    }
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
+  const signup = async (name: string, email: string, password?: string, avatar?: string) => {
     try {
-      window.localStorage.setItem(AUTH_STORAGE_KEY, "false");
-    } catch {}
+      const res = await api.post("/auth/register", { name, email, password, avatar });
+      toast.success(res.data.message || "Signup successful. Please verify your email.");
+      return true;
+    } catch (err: any) {
+      return false;
+    }
+  };
+
+  const verifyOtp = async (email: string, otp: string) => {
+    try {
+      const res = await api.post("/auth/verify-otp", { email, otp });
+      setIsAuthenticated(true);
+      if (res.data.user) {
+        setCurrentUser(res.data.user);
+        window.localStorage.setItem(USER_STORAGE_KEY, res.data.user.id);
+      }
+      window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
+      toast.success("Email verified successfully!");
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (e) {}
+    setIsAuthenticated(false);
+    window.localStorage.setItem(AUTH_STORAGE_KEY, "false");
+    window.location.hash = "#/login";
   };
 
   // Persist tasks to localStorage whenever they change
@@ -1135,6 +1140,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
         updateCurrentUser,
         login,
         signup,
+        verifyOtp,
         logout,
         removeUser,
         addTask,
