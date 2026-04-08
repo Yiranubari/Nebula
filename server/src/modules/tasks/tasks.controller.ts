@@ -9,7 +9,7 @@ export class TasksController extends BaseController {
   }
 
   createTask = async (req: Request, res: Response) => {
-    const task = await this.tasksService.createTask(req.body);
+    const task = await this.tasksService.createTask(req.user!.id, req.body);
     this.created(res, task);
   };
 
@@ -29,6 +29,7 @@ export class TasksController extends BaseController {
 
   updateTask = async (req: Request, res: Response) => {
     const task = await this.tasksService.updateTask(
+      req.user!.id,
       req.params.id as string,
       req.body
     );

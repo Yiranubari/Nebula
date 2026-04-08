@@ -4,11 +4,24 @@ import { AppError } from "../../utils/AppError";
 import { TaskStatus, Priority } from "@prisma/client";
 
 export class TasksService extends BaseService {
-  async createTask(data: CreateTaskDto) {
-    return this.prisma.task.create({
+  async createTask(userId: string, data: CreateTaskDto) {
+    const task = await this.prisma.task.create({
       data,
       include: { assignee: { select: { id: true, name: true, avatar: true } } },
     });
+
+    if (task.assigneeId && task.assigneeId !== userId) {
+      await this.prisma.notification.create({
+        data: {
+          type: "ASSIGNED",
+          taskId: task.id,
+          requesterId: userId,
+          recipientId: task.assigneeId,
+        },
+      });
+    }
+
+    return task;
   }
 
   async getTasks(filters: {
@@ -38,15 +51,32 @@ export class TasksService extends BaseService {
     return task;
   }
 
-  async updateTask(taskId: string, data: UpdateTaskDto) {
+  async updateTask(userId: string, taskId: string, data: UpdateTaskDto) {
     // Check if task exists first
-    await this.getTaskById(taskId);
+    const existingTask = await this.getTaskById(taskId);
 
-    return this.prisma.task.update({
+    const task = await this.prisma.task.update({
       where: { id: taskId },
       data,
       include: { assignee: { select: { id: true, name: true, avatar: true } } },
     });
+
+    if (
+      task.assigneeId &&
+      task.assigneeId !== existingTask.assigneeId &&
+      task.assigneeId !== userId
+    ) {
+      await this.prisma.notification.create({
+        data: {
+          type: "ASSIGNED",
+          taskId: task.id,
+          requesterId: userId,
+          recipientId: task.assigneeId,
+        },
+      });
+    }
+
+    return task;
   }
 
   async deleteTask(taskId: string) {

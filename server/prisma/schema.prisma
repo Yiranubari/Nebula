@@ -47,23 +47,26 @@ enum NotifStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         Role     @default(MEMBER)
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         Role      @default(MEMBER)
   avatar       String?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  isVerified   Boolean   @default(false) @map("is_verified")
+  otp          String?
+  otpExpiresAt DateTime? @map("otp_expires_at")
 
-  assignedTasks      Task[]          @relation("AssignedTasks")
-  messages           Message[]
-  sentDMs            DirectMessage[] @relation("SentDMs")
-  receivedDMs        DirectMessage[] @relation("ReceivedDMs")
-  tracks             TrackMember[]
-  refreshTokens      RefreshToken[]
-  sentNotifications  Notification[]  @relation("RequesterNotifications")
-  receivedNotifications Notification[] @relation("RecipientNotifications")
+  assignedTasks         Task[]          @relation("AssignedTasks")
+  messages              Message[]
+  sentDMs               DirectMessage[] @relation("SentDMs")
+  receivedDMs           DirectMessage[] @relation("ReceivedDMs")
+  tracks                TrackMember[]
+  refreshTokens         RefreshToken[]
+  sentNotifications     Notification[]  @relation("RequesterNotifications")
+  receivedNotifications Notification[]  @relation("RecipientNotifications")
 
   @@map("users")
 }
