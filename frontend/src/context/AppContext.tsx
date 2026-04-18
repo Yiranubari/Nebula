@@ -1,12 +1,26 @@
+/**
+ * AppContext — application-wide state driven entirely by the REST API + Socket.IO.
+ * All mock data and localStorage-based persistence has been removed.
+ *
+ * State is loaded from the server on mount and kept in sync via:
+ *   • REST API calls for mutations
+ *   • Socket.IO events for real-time updates from other clients
+ */
+
 import React, {
   createContext,
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import toast from "react-hot-toast";
 import { api } from "../services/api";
+import { tasksService } from "../services/tasks.service";
+import { tracksService } from "../services/tracks.service";
+import { usersService } from "../services/users.service";
+import { notificationsService } from "../services/notifications.service";
 import {
   Task,
   User,
@@ -16,14 +30,15 @@ import {
   Track,
   Notification,
   NotificationStatus,
-} from "../types";
-import {
   PresenceMap,
   PresenceStatus,
   TypingByDm,
   TypingByTrack,
 } from "../types";
-import type { DirectMessage } from "../types";
+import type { DirectMessage, Attachment } from "../types";
+import { useSocket } from "./SocketContext";
+
+// ─── Context interface ────────────────────────────────────────────────────────
 
 interface AppContextType {
   currentUser: User;
@@ -37,589 +52,519 @@ interface AppContextType {
   typingByTrack: TypingByTrack;
   typingByDm: TypingByDm;
   isAuthenticated: boolean;
-  switchUser: (userId: string) => void;
-  addUser: (user: User) => void;
-  updateCurrentUser: (
-    updates: Partial<Pick<User, "name" | "email" | "avatar">>
-  ) => void;
+  isLoading: boolean;
+
+  // Auth
   login: (email: string, password?: string) => Promise<boolean>;
   signup: (name: string, email: string, password?: string, avatar?: string) => Promise<boolean>;
   verifyOtp: (email: string, otp: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  removeUser: (userId: string) => void;
-  addTask: (task: Task) => void;
-  updateTask: (task: Task) => void;
-  updateTaskStatus: (taskId: string, status: TaskStatus) => void;
-  sendMessage: (
-    content: string,
-    trackId?: string,
-    attachments?: import("../types").Attachment[]
-  ) => void;
-  sendReply: (
-    parentId: string,
-    content: string,
-    trackId?: string,
-    attachments?: import("../types").Attachment[]
-  ) => void;
+
+  // Users
+  updateCurrentUser: (updates: Partial<Pick<User, "name" | "email" | "avatar">>) => Promise<void>;
+  removeUser: (userId: string) => Promise<void>;
+  addUser: (user: User) => void;           // admin-only local add after API call
+  switchUser: (userId: string) => void;    // dev helper — remove in prod
+
+  // Tasks
+  addTask: (task: Omit<Task, "id" | "createdAt">) => Promise<void>;
+  updateTask: (task: Task) => Promise<void>;
+  updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
+  requestTaskApproval: (taskId: string) => void;
+  approveTask: (taskId: string) => Promise<void>;
+  rejectTask: (taskId: string) => Promise<void>;
+  addTaskReminder: (taskId: string, forUserId?: string) => void;
+
+  // Tracks
+  addTrack: (name: string) => Promise<Track | null>;
+  addMemberToTrack: (trackId: string, userId: string) => Promise<void>;
+  removeMemberFromTrack: (trackId: string, userId: string) => Promise<void>;
+  renameTrack: (trackId: string, name: string) => Promise<void>;
+  deleteTrack: (trackId: string) => Promise<void>;
+
+  // Messages (track)
+  sendMessage: (content: string, trackId?: string, attachments?: Attachment[]) => void;
+  sendReply: (parentId: string, content: string, trackId?: string, attachments?: Attachment[]) => void;
   pinMessage: (messageId: string, pinned: boolean) => void;
   deleteMessage: (messageId: string) => void;
   toggleReaction: (messageId: string, emoji: string, userId: string) => void;
-  toggleDirectMessageReaction: (
-    directMessageId: string,
-    emoji: string,
-    userId: string
-  ) => void;
-  requestTaskApproval: (taskId: string) => void;
-  approveTask: (taskId: string) => void;
-  rejectTask: (taskId: string) => void;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsReadForUser: (userId: string) => void;
-  addTrack: (name: string) => Track | null;
-  addMemberToTrack: (trackId: string, userId: string) => void;
-  removeMemberFromTrack: (trackId: string, userId: string) => void;
-  renameTrack: (trackId: string, name: string) => void;
-  deleteTrack: (trackId: string) => void;
-  deleteTask: (taskId: string) => void;
-  setUserPresence: (
-    userId: string,
-    status: PresenceStatus,
-    extra?: Partial<{ inHuddleTrackId: string | null }>
-  ) => void;
-  setTyping: (trackId: string, userId: string, isTyping: boolean) => void;
-  setDmTyping: (withUserId: string, userId: string, isTyping: boolean) => void;
   markTrackRead: (trackId: string) => void;
-  sendDirectMessage: (
-    toUserId: string,
-    content: string,
-    attachments?: import("../types").Attachment[]
-  ) => string;
+
+  // Direct messages
+  sendDirectMessage: (toUserId: string, content: string, attachments?: Attachment[]) => string;
   markDmThreadRead: (withUserId: string) => void;
   setDirectMessageStatus: (id: string, status: "sent" | "failed") => void;
-  addTaskReminder: (taskId: string, forUserId?: string) => void;
+  toggleDirectMessageReaction: (dmId: string, emoji: string, userId: string) => void;
+
+  // Notifications
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsReadForUser: (userId: string) => Promise<void>;
+
+  // Presence / typing (socket-driven, kept for API compat)
+  setUserPresence: (userId: string, status: PresenceStatus, extra?: Partial<{ inHuddleTrackId: string | null }>) => void;
+  setTyping: (trackId: string, userId: string, isTyping: boolean) => void;
+  setDmTyping: (withUserId: string, userId: string, isTyping: boolean) => void;
 }
+
+// ─── Context creation ─────────────────────────────────────────────────────────
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const MOCK_USERS: User[] = [
-  {
-    id: "u1",
-    name: "Alice Chen",
-    role: "ADMIN",
-    email: "alice@nebula.dev",
-    avatar: "https://picsum.photos/100/100?random=1",
-  },
-  {
-    id: "u2",
-    name: "Bob Smith",
-    role: "MEMBER",
-    email: "bob@nebula.dev",
-    avatar: "https://picsum.photos/100/100?random=2",
-  },
-  {
-    id: "u3",
-    name: "Charlie Kim",
-    role: "MEMBER",
-    email: "charlie@nebula.dev",
-    avatar: "https://picsum.photos/100/100?random=3",
-  },
-  {
-    id: "u4",
-    name: "Diana Prince",
-    role: "MEMBER",
-    email: "diana@nebula.dev",
-    avatar: "https://picsum.photos/100/100?random=4",
-  },
-];
+// ─── Auth storage keys ────────────────────────────────────────────────────────
 
-const INITIAL_TASKS: Task[] = [
-  {
-    id: "t1",
-    title: "Setup Project Repo",
-    description: "Initialize Git, configure CI/CD pipelines.",
-    status: TaskStatus.DONE,
-    priority: Priority.HIGH,
-    assigneeId: "u2",
-    createdAt: new Date().toISOString(),
-    estimatedHours: 4,
-  },
-  {
-    id: "t2",
-    title: "Design Login Page",
-    description: "Create Figma mockups for the authentication flow.",
-    status: TaskStatus.IN_PROGRESS,
-    priority: Priority.MEDIUM,
-    assigneeId: "u3",
-    createdAt: new Date().toISOString(),
-    estimatedHours: 6,
-  },
-  {
-    id: "t3",
-    title: "API Schema Definition",
-    description: "Define the REST endpoints for the task resource.",
-    status: TaskStatus.TODO,
-    priority: Priority.CRITICAL,
-    assigneeId: "u1",
-    createdAt: new Date().toISOString(),
-    estimatedHours: 3,
-  },
-];
+const AUTH_KEY = "nebula.auth.v1";
+const USER_KEY = "nebula.user.v1";
 
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "m1",
-    userId: "u2",
-    content: "Hey team, repo is set up!",
-    timestamp: new Date(Date.now() - 100000).toISOString(),
-  },
-  {
-    id: "m2",
-    userId: "u1",
-    content: "Great job Bob. Charlie, how is the design coming?",
-    timestamp: new Date(Date.now() - 50000).toISOString(),
-  },
-];
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
-// INITIAL_TRACKS is filled after users are hydrated to include all members
-const INITIAL_TRACKS_BASE: Omit<Track, "members">[] = [
-  {
-    id: "track-general",
-    name: "general-team",
-    createdAt: new Date().toISOString(),
-  },
-];
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { socket } = useSocket();
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
-  const USER_STORAGE_KEY = "nebula.user.v1";
-  const USERS_STORAGE_KEY = "nebula.users.v1";
-  const AUTH_STORAGE_KEY = "nebula.auth.v1";
-  const TRACKS_STORAGE_KEY = "nebula.tracks.v1";
-  const [currentUser, setCurrentUser] = useState<User>(() => {
-    try {
-      const id =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(USER_STORAGE_KEY)
-          : null;
-      // Hydrate users first to locate the current user by id
-      const rawUsers =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(USERS_STORAGE_KEY)
-          : null;
-      const hydratedUsers = rawUsers
-        ? (JSON.parse(rawUsers) as User[])
-        : MOCK_USERS;
-      const found = id ? hydratedUsers.find((u) => u.id === id) : undefined;
-      return found || hydratedUsers[0];
-    } catch {
-      return MOCK_USERS[0];
-    }
-  });
-  const [users, setUsers] = useState<User[]>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(USERS_STORAGE_KEY)
-          : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as User[];
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {}
-    return MOCK_USERS;
-  });
-  const TASKS_STORAGE_KEY = "nebula.tasks.v1";
-  const MESSAGES_STORAGE_KEY = "nebula.messages.v1";
-  const DMS_STORAGE_KEY = "nebula.dms.v1";
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(TASKS_STORAGE_KEY)
-          : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as Task[];
-        if (Array.isArray(parsed)) {
-          return parsed.map((t) => ({
-            ...t,
-            // Defensive coercions to avoid runtime issues
-            estimatedHours: Number((t as any).estimatedHours ?? 0),
-            createdAt: t.createdAt || new Date().toISOString(),
-          }));
-        }
-      }
-    } catch {}
-    return INITIAL_TASKS;
-  });
-  const [messages, setMessages] = useState<Message[]>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(MESSAGES_STORAGE_KEY)
-          : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as Message[];
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {}
-    return INITIAL_MESSAGES;
-  });
-  const [directMessages, setDirectMessages] = useState<DirectMessage[]>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(DMS_STORAGE_KEY)
-          : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as DirectMessage[];
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {}
-    return [];
-  });
-  const NOTIFS_STORAGE_KEY = "nebula.notifications.v1";
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(NOTIFS_STORAGE_KEY)
-          : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as Notification[];
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {}
-    return [];
-  });
-  const [tracks, setTracks] = useState<Track[]>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(TRACKS_STORAGE_KEY)
-          : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as any[];
-        if (Array.isArray(parsed) && parsed.length) {
-          const allMemberIds = (Array.isArray(users) ? users : []).map(
-            (u) => u.id
-          );
-          return parsed.map((t) => ({
-            id: t.id,
-            name: t.name,
-            createdAt: t.createdAt || new Date().toISOString(),
-            members: Array.isArray(t.members) ? t.members : allMemberIds,
-          }));
-        }
-      }
-    } catch {}
-    // Default: general includes all users
-    const allMemberIds = (Array.isArray(users) ? users : []).map((u) => u.id);
-    return INITIAL_TRACKS_BASE.map((t) => ({ ...t, members: allMemberIds }));
-  });
-
-  // Presence and typing state
-  const PRESENCE_STORAGE_KEY = "nebula.presence.v1";
-  const TYPING_STORAGE_KEY = "nebula.typing.v1";
-
-  const [presence, setPresence] = useState<PresenceMap>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(PRESENCE_STORAGE_KEY)
-          : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as PresenceMap;
-        return parsed || {};
-      }
-    } catch {}
-    // Default: mark known users offline, current user online
-    const now = new Date().toISOString();
-    const map: PresenceMap = {};
-    (Array.isArray(MOCK_USERS) ? MOCK_USERS : []).forEach((u) => {
-      map[u.id] = {
-        status:
-          u.id === (currentUser?.id || MOCK_USERS[0].id) ? "online" : "offline",
-        lastActive: now,
-        inHuddleTrackId: null,
-      };
-    });
-    return map;
-  });
-
-  const [typingByTrack, setTypingByTrack] = useState<TypingByTrack>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(TYPING_STORAGE_KEY)
-          : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as TypingByTrack;
-        return parsed || {};
-      }
-    } catch {}
-    return {};
-  });
-
-  const [typingByDm, setTypingByDm] = useState<TypingByDm>({});
+  // ─── Core state ────────────────────────────────────────────────────────────
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(AUTH_STORAGE_KEY)
-          : null;
-      if (raw === "true" || raw === "false") return raw === "true";
-    } catch {}
-    return true;
+    try { return localStorage.getItem(AUTH_KEY) === "true"; } catch { return false; }
   });
 
-  const switchUser = (userId: string) => {
-    const user = users.find((u) => u.id === userId);
-    if (user) {
-      setCurrentUser(user);
-      try {
-        window.localStorage.setItem(USER_STORAGE_KEY, user.id);
-      } catch {}
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [currentUser, setCurrentUser] = useState<User>({
+    id: "",
+    name: "",
+    email: "",
+    role: "MEMBER",
+  });
+
+  const [users, setUsers]                       = useState<User[]>([]);
+  const [tasks, setTasks]                       = useState<Task[]>([]);
+  const [messages, setMessages]                 = useState<Message[]>([]);
+  const [tracks, setTracks]                     = useState<Track[]>([]);
+  const [notifications, setNotifications]       = useState<Notification[]>([]);
+  const [directMessages, setDirectMessages]     = useState<DirectMessage[]>([]);
+  const [presence, setPresence]                 = useState<PresenceMap>({});
+  const [typingByTrack, setTypingByTrack]       = useState<TypingByTrack>({});
+  const [typingByDm, setTypingByDm]             = useState<TypingByDm>({});
+
+  // ─── Bootstrap: load everything on auth ────────────────────────────────────
+
+  const bootstrap = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [me, allUsers, allTasks, allTracks, allNotifs] = await Promise.all([
+        usersService.getMe(),
+        usersService.list(),
+        tasksService.list(),
+        tracksService.list(),
+        notificationsService.list(),
+      ]);
+
+      setCurrentUser(me);
+      setUsers(allUsers);
+      setTasks(allTasks as unknown as Task[]);
+      setTracks(allTracks);
+      setNotifications(allNotifs as unknown as Notification[]);
+
+      // Build initial presence map from user list
+      const now = new Date().toISOString();
+      const presMap: PresenceMap = {};
+      allUsers.forEach((u) => {
+        presMap[u.id] = { status: u.id === me.id ? "online" : "offline", lastActive: now };
+      });
+      setPresence(presMap);
+
+      // Load messages for first (most recent) track
+      if (allTracks.length > 0) {
+        await loadTrackMessages(allTracks[0].id);
+      }
+
+      localStorage.setItem(USER_KEY, me.id);
+    } catch (err) {
+      console.error("[AppContext] bootstrap failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) bootstrap();
+  }, [isAuthenticated, bootstrap]);
+
+  const loadTrackMessages = async (trackId: string) => {
+    try {
+      const result = await tracksService.getMessages(trackId);
+      const normalised = (result.items ?? []).map((m: any) => ({
+        ...m,
+        timestamp: m.createdAt ?? m.timestamp,
+        trackId: m.trackId ?? trackId,
+      }));
+      setMessages((prev) => {
+        // Merge without duplicates
+        const ids = new Set(prev.map((x) => x.id));
+        return [...prev, ...normalised.filter((m: Message) => !ids.has(m.id))];
+      });
+    } catch {}
+  };
+
+  // ─── Socket.IO real-time listeners ─────────────────────────────────────────
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // Presence updates
+    const onPresence = (payload: { userId: string; info: { status: PresenceStatus; lastActive: string; inHuddleTrackId?: string | null } }) => {
+      setPresence((prev) => ({
+        ...prev,
+        [payload.userId]: payload.info,
+      }));
+    };
+
+    // Typing indicators
+    const onTyping = (payload: { trackId?: string; dmKey?: string; userIds: string[] }) => {
+      if (payload.trackId) {
+        setTypingByTrack((prev) => ({ ...prev, [payload.trackId!]: payload.userIds }));
+      }
+      if (payload.dmKey) {
+        setTypingByDm((prev) => ({ ...prev, [payload.dmKey!]: payload.userIds }));
+      }
+    };
+
+    // New track message
+    const onMessageNew = (message: any) => {
+      const normalised: Message = {
+        ...message,
+        timestamp: message.createdAt ?? message.timestamp,
+        trackId: message.trackId,
+      };
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === normalised.id)) return prev;
+        return [...prev, normalised];
+      });
+    };
+
+    // Updated track message (reaction, read, pin)
+    const onMessageUpdated = (message: any) => {
+      const normalised: Message = { ...message, timestamp: message.createdAt ?? message.timestamp };
+      setMessages((prev) =>
+        prev.map((m) => (m.id === normalised.id ? normalised : m))
+      );
+    };
+
+    // New DM
+    const onDmNew = (dm: any) => {
+      const normalised: DirectMessage = {
+        ...dm,
+        timestamp: dm.createdAt ?? dm.timestamp,
+        status: "sent",
+      };
+      setDirectMessages((prev) => {
+        if (prev.some((m) => m.id === normalised.id)) return prev;
+        return [...prev, normalised];
+      });
+    };
+
+    // Updated DM (reaction)
+    const onDmUpdated = (dm: any) => {
+      const normalised: DirectMessage = { ...dm, timestamp: dm.createdAt ?? dm.timestamp };
+      setDirectMessages((prev) =>
+        prev.map((m) => (m.id === normalised.id ? normalised : m))
+      );
+    };
+
+    // Incoming real-time notification
+    const onNotificationNew = (notif: any) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n.id === notif.id)) return prev;
+        return [notif, ...prev];
+      });
+      toast(`🔔 New notification`, { duration: 3000 });
+    };
+
+    socket.on("presence:update", onPresence);
+    socket.on("typing:update", onTyping);
+    socket.on("message:new", onMessageNew);
+    socket.on("message:updated", onMessageUpdated);
+    socket.on("dm:new", onDmNew);
+    socket.on("dm:updated", onDmUpdated);
+    socket.on("notification:new", onNotificationNew);
+
+    return () => {
+      socket.off("presence:update", onPresence);
+      socket.off("typing:update", onTyping);
+      socket.off("message:new", onMessageNew);
+      socket.off("message:updated", onMessageUpdated);
+      socket.off("dm:new", onDmNew);
+      socket.off("dm:updated", onDmUpdated);
+      socket.off("notification:new", onNotificationNew);
+    };
+  }, [socket]);
+
+  // ─── Auth ──────────────────────────────────────────────────────────────────
+
+  const login = async (email: string, password?: string): Promise<boolean> => {
+    try {
+      const res = await api.post("/auth/login", { email, password });
+      if (res.data.accessToken) {
+        localStorage.setItem("nebula.accessToken", res.data.accessToken);
+      }
+      localStorage.setItem(AUTH_KEY, "true");
+      if (res.data.user) setCurrentUser(res.data.user);
+      setIsAuthenticated(true);
+      toast.success("Welcome back!");
+      return true;
+    } catch {
+      return false;
     }
   };
+
+  const signup = async (name: string, email: string, password?: string, avatar?: string): Promise<boolean> => {
+    try {
+      const res = await api.post("/auth/register", { name, email, password, avatar });
+      toast.success(res.data.message || "Account created — please verify your email.");
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const verifyOtp = async (email: string, otp: string): Promise<boolean> => {
+    try {
+      const res = await api.post("/auth/verify-otp", { email, otp });
+      if (res.data.accessToken) {
+        localStorage.setItem("nebula.accessToken", res.data.accessToken);
+      }
+      localStorage.setItem(AUTH_KEY, "true");
+      if (res.data.user) setCurrentUser(res.data.user);
+      setIsAuthenticated(true);
+      toast.success("Email verified!");
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try { await api.post("/auth/logout"); } catch {}
+    localStorage.removeItem("nebula.accessToken");
+    localStorage.setItem(AUTH_KEY, "false");
+    setIsAuthenticated(false);
+    setCurrentUser({ id: "", name: "", email: "", role: "MEMBER" });
+    setUsers([]); setTasks([]); setMessages([]); setTracks([]);
+    setNotifications([]); setDirectMessages([]); setPresence({});
+    window.location.hash = "#/login";
+  };
+
+  // ─── Users ─────────────────────────────────────────────────────────────────
 
   const addUser = (user: User) => {
-    setUsers((prev) => {
-      // Prevent duplicate IDs
-      if (prev.some((u) => u.id === user.id)) return prev;
-      const next = [...prev, user];
-      // If no currentUser, set first added as current
-      if (!currentUser || !next.find((u) => u.id === currentUser.id)) {
-        setCurrentUser(user);
-        try {
-          window.localStorage.setItem(USER_STORAGE_KEY, user.id);
-        } catch {}
-      }
-      return next;
-    });
+    setUsers((prev) => (prev.some((u) => u.id === user.id) ? prev : [...prev, user]));
   };
 
-  const updateCurrentUser = (
-    updates: Partial<Pick<User, "name" | "email" | "avatar">>
-  ) => {
-    setUsers((prev) => {
-      const next = prev.map((u) =>
-        u.id === currentUser.id ? { ...u, ...updates } : u
-      );
-      const updated = next.find((u) => u.id === currentUser.id) || currentUser;
+  const switchUser = (userId: string) => {
+    const u = users.find((u) => u.id === userId);
+    if (u) setCurrentUser(u);
+  };
+
+  const updateCurrentUser = async (updates: Partial<Pick<User, "name" | "email" | "avatar">>) => {
+    try {
+      const updated = await usersService.updateMe(updates);
       setCurrentUser(updated);
-      return next;
-    });
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      toast.success("Profile updated");
+    } catch {}
   };
 
-  const removeUser = (userId: string) => {
-    setUsers((prev) => {
-      if (prev.length <= 1) {
-        // Prevent removing the last remaining user
-        return prev;
-      }
-      const next = prev.filter((u) => u.id !== userId);
-      // Nullify assignee on tasks for removed user
-      setTasks((prevTasks) =>
-        prevTasks.map((t) =>
-          t.assigneeId === userId ? { ...t, assigneeId: null } : t
-        )
-      );
-      // Remove the user from all track member lists
-      setTracks((prevTracks) =>
-        prevTracks.map((t) => ({
-          ...t,
-          members: t.members.filter((id) => id !== userId),
-        }))
-      );
-      // If current user removed, switch to first remaining
-      if (currentUser.id === userId) {
-        const fallback = next[0];
-        setCurrentUser(fallback);
-        try {
-          window.localStorage.setItem(USER_STORAGE_KEY, fallback.id);
-        } catch {}
-      }
-      return next;
-    });
+  const removeUser = async (userId: string) => {
+    try {
+      await usersService.delete(userId);
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch {}
   };
 
-  const addTask = (task: Task) => {
-    setTasks((prev) => [...prev, task]);
-    if (currentUser.role === "ADMIN" && task.assigneeId) {
-      setNotifications((prev) => [
-        ...prev,
-        {
-          id: `n-${Date.now()}`,
-          taskId: task.id,
-          requesterId: currentUser.id,
-          recipientId: task.assigneeId,
-          createdAt: new Date().toISOString(),
-          status: "INFO",
-          type: "ASSIGNED",
-          read: false,
-        },
-      ]);
+  // ─── Tasks ─────────────────────────────────────────────────────────────────
+
+  const addTask = async (task: Omit<Task, "id" | "createdAt">) => {
+    try {
+      const created = await tasksService.create(task as any);
+      setTasks((prev) => [...prev, created as unknown as Task]);
+    } catch {}
+  };
+
+  const updateTask = async (task: Task) => {
+    try {
+      const updated = await tasksService.update(task.id, task as any);
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated as unknown as Task : t)));
+    } catch {}
+  };
+
+  const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
+    try {
+      // For non-admin going to DONE → intercept and move to REVIEW
+      const isAdmin = currentUser.role === "ADMIN";
+      const finalStatus = (!isAdmin && status === TaskStatus.DONE) ? TaskStatus.REVIEW : status;
+      const updated = await tasksService.update(taskId, { status: finalStatus as any });
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
+    } catch {}
+  };
+
+  const deleteTask = async (taskId: string) => {
+    try {
+      await tasksService.delete(taskId);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    } catch {}
+  };
+
+  const requestTaskApproval = (taskId: string) => {
+    // Optimistic — the server creates the notification on status change
+    updateTaskStatus(taskId, TaskStatus.REVIEW);
+  };
+
+  const approveTask = async (taskId: string) => {
+    try {
+      const updated = await tasksService.update(taskId, { status: "DONE" as any });
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
+    } catch {}
+  };
+
+  const rejectTask = async (taskId: string) => {
+    try {
+      const updated = await tasksService.update(taskId, { status: "REVIEW" as any });
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
+    } catch {}
+  };
+
+  const addTaskReminder = (_taskId: string, _forUserId?: string) => {
+    // Placeholder — implement push notification via server when needed
+  };
+
+  // ─── Tracks ────────────────────────────────────────────────────────────────
+
+  const addTrack = async (name: string): Promise<Track | null> => {
+    try {
+      const track = await tracksService.create({ name });
+      setTracks((prev) => [track, ...prev]);
+      return track;
+    } catch {
+      return null;
     }
   };
 
-  const updateTask = (task: Task) => {
-    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...task } : t)));
+  const addMemberToTrack = async (trackId: string, userId: string) => {
+    try {
+      await tracksService.addMember(trackId, userId);
+      setTracks((prev) =>
+        prev.map((t) =>
+          t.id === trackId && !t.members.includes(userId)
+            ? { ...t, members: [...t.members, userId] }
+            : t
+        )
+      );
+    } catch {}
   };
 
-  const updateTaskStatus = (taskId: string, status: TaskStatus) => {
-    setTasks((prev) => {
-      const isAdmin = currentUser.role === "ADMIN";
-      return prev.map((t) => {
-        if (t.id !== taskId) return t;
-        // Only admin or the task assignee can progress task status
-        if (!isAdmin && currentUser.id !== t.assigneeId) {
-          return t;
-        }
-        if (status === TaskStatus.DONE && !isAdmin) {
-          // Gate: non-admin cannot set DONE; switch to REVIEW and notify admins
-          const next = { ...t, status: TaskStatus.REVIEW };
-          setNotifications((prevN) => [
-            ...prevN,
-            {
-              id: `n-${Date.now()}`,
-              taskId: t.id,
-              requesterId: currentUser.id,
-              createdAt: new Date().toISOString(),
-              status: "PENDING" as NotificationStatus,
-              read: false,
-            },
-          ]);
-          return next;
-        }
-        return { ...t, status };
-      });
+  const removeMemberFromTrack = async (trackId: string, userId: string) => {
+    try {
+      await tracksService.removeMember(trackId, userId);
+      setTracks((prev) =>
+        prev.map((t) =>
+          t.id === trackId
+            ? { ...t, members: t.members.filter((id) => id !== userId) }
+            : t
+        )
+      );
+    } catch {}
+  };
+
+  const renameTrack = async (trackId: string, name: string) => {
+    // Optimistic update
+    setTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, name } : t))
+    );
+    try {
+      await tracksService.rename(trackId, name);
+    } catch {
+      // Rollback would go here — omitted for brevity
+    }
+  };
+
+  const deleteTrack = async (trackId: string) => {
+    setTracks((prev) => prev.filter((t) => t.id !== trackId));
+    try {
+      await tracksService.delete(trackId);
+    } catch {}
+  };
+
+  // ─── Messages ─────────────────────────────────────────────────────────────
+
+  const sendMessage = (content: string, trackId?: string, _attachments?: Attachment[]) => {
+    const tid = trackId ?? tracks[0]?.id;
+    if (!tid || !socket) return;
+    // Emit via socket — the server will broadcast message:new back
+    socket.emit("message:send", {
+      trackId: tid,
+      content,
+      ...((_attachments?.length) ? { attachments: _attachments } : {}),
     });
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    // Clean up related notifications
-    setNotifications((prev) => prev.filter((n) => n.taskId !== taskId));
-  };
-
-  const setUserPresence = (
-    userId: string,
-    status: PresenceStatus,
-    extra?: Partial<{ inHuddleTrackId: string | null }>
-  ) => {
-    setPresence((prev) => {
-      const now = new Date().toISOString();
-      const next: PresenceMap = {
-        ...prev,
-        [userId]: {
-          status,
-          lastActive: now,
-          inHuddleTrackId:
-            extra && "inHuddleTrackId" in extra
-              ? extra.inHuddleTrackId ?? null
-              : prev[userId]?.inHuddleTrackId ?? null,
-        },
-      };
-      try {
-        window.localStorage.setItem(PRESENCE_STORAGE_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
+  const sendReply = (parentId: string, content: string, trackId?: string, _attachments?: Attachment[]) => {
+    const tid = trackId ?? tracks[0]?.id;
+    if (!tid || !socket) return;
+    socket.emit("message:send", {
+      trackId: tid,
+      content,
+      parentId,
+      ...((_attachments?.length) ? { attachments: _attachments } : {}),
     });
   };
 
-  const setTyping = (trackId: string, userId: string, isTyping: boolean) => {
-    setTypingByTrack((prev) => {
-      const current = new Set(prev[trackId] || []);
-      if (isTyping) current.add(userId);
-      else current.delete(userId);
-      const next: TypingByTrack = {
-        ...prev,
-        [trackId]: Array.from(current),
-      };
-      try {
-        window.localStorage.setItem(TYPING_STORAGE_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
+  const pinMessage = (messageId: string, pinned: boolean) => {
+    if (!socket) return;
+    socket.emit("message:pin", { messageId, pinned });
   };
 
-  const dmThreadKey = (a: string, b: string) => [a, b].sort().join("|");
+  const deleteMessage = (messageId: string) => {
+    // Optimistic remove — server-side delete not yet wired to a socket event
+    setMessages((prev) => prev.filter((m) => m.id !== messageId && m.parentId !== messageId));
+  };
 
-  const setDmTyping = (
-    withUserId: string,
-    userId: string,
-    isTyping: boolean
-  ) => {
-    const key = dmThreadKey(currentUser.id, withUserId);
-    setTypingByDm((prev) => {
-      const current = new Set(prev[key] || []);
-      if (isTyping) current.add(userId);
-      else current.delete(userId);
-      const nextArr = Array.from(current);
-      if (nextArr.length === 0) {
-        if (!(key in prev)) return prev;
-        const { [key]: _removed, ...rest } = prev;
-        return rest;
-      }
-      return { ...prev, [key]: nextArr };
-    });
+  const toggleReaction = (messageId: string, emoji: string, _userId: string) => {
+    if (!socket) return;
+    socket.emit("message:react", { messageId, emoji });
   };
 
   const markTrackRead = (trackId: string) => {
-    const me = currentUser.id;
-    setMessages((prev) => {
-      let changed = false;
-      const next = prev.map((m) => {
-        const tid = m.trackId || tracks[0]?.id || "track-general";
-        if (tid !== trackId) return m;
-        const readBy = new Set(m.readBy || []);
-        if (readBy.has(me)) return m;
-        readBy.add(me);
-        changed = true;
-        return { ...m, readBy: Array.from(readBy) };
-      });
-      return changed ? next : prev;
-    });
+    // Emit read events for unread messages in this track
+    messages
+      .filter((m) => (m.trackId ?? tracks[0]?.id) === trackId && !m.readBy?.includes(currentUser.id))
+      .forEach((m) => socket?.emit("message:read", { messageId: m.id }));
   };
 
-  const sendDirectMessage = (
-    toUserId: string,
-    content: string,
-    attachments: import("../types").Attachment[] = []
-  ): string => {
-    const dm: DirectMessage = {
-      id: `dm-${Date.now()}`,
+  // ─── Direct messages ───────────────────────────────────────────────────────
+
+  const sendDirectMessage = (toUserId: string, content: string, _attachments?: Attachment[]): string => {
+    const tempId = `temp-${Date.now()}`;
+    if (!socket) return tempId;
+    // Optimistic append
+    const optimistic: DirectMessage = {
+      id: tempId,
       fromUserId: currentUser.id,
       toUserId,
       content,
       timestamp: new Date().toISOString(),
-      attachments: attachments && attachments.length ? attachments : undefined,
       reactions: {},
       readBy: [currentUser.id],
       status: "sent",
+      ...((_attachments?.length) ? { attachments: _attachments } : {}),
     };
-    setDirectMessages((prev) => [...prev, dm]);
-    return dm.id;
-  };
-
-  const toggleDirectMessageReaction = (
-    directMessageId: string,
-    emoji: string,
-    userId: string
-  ) => {
-    setDirectMessages((prev) =>
-      prev.map((m) => {
-        if (m.id !== directMessageId) return m;
-        const map = { ...(m.reactions || {}) } as Record<string, string[]>;
-        const before = new Set(map[emoji] || []);
-        const after = new Set(before);
-        if (after.has(userId)) after.delete(userId);
-        else after.add(userId);
-        map[emoji] = Array.from(after);
-        return { ...m, reactions: map };
-      })
-    );
+    setDirectMessages((prev) => [...prev, optimistic]);
+    socket.emit("dm:send", {
+      toUserId,
+      content,
+      ...((_attachments?.length) ? { attachments: _attachments } : {}),
+    });
+    return tempId;
   };
 
   const markDmThreadRead = (withUserId: string) => {
@@ -630,7 +575,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
           (m.fromUserId === me && m.toUserId === withUserId) ||
           (m.fromUserId === withUserId && m.toUserId === me);
         if (!isBetween) return m;
-        const readBy = new Set(m.readBy || []);
+        const readBy = new Set(m.readBy ?? []);
         readBy.add(me);
         return { ...m, readBy: Array.from(readBy) };
       })
@@ -643,483 +588,99 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
     );
   };
 
-  const addTaskReminder = (taskId: string, forUserId?: string) => {
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task) return;
-    const recipient = forUserId || task.assigneeId || currentUser.id;
-    setNotifications((prev) => [
-      ...prev,
-      {
-        id: `n-${Date.now()}-rem-${taskId}`,
-        taskId,
-        requesterId: currentUser.id,
-        recipientId: recipient || undefined,
-        createdAt: new Date().toISOString(),
-        status: "INFO",
-        type: "ASSIGNED",
-        read: false,
-      },
-    ]);
+  const toggleDirectMessageReaction = (dmId: string, emoji: string, _userId: string) => {
+    if (!socket) return;
+    socket.emit("dm:react", { messageId: dmId, emoji });
   };
 
-  const sendMessage = (
-    content: string,
-    trackId?: string,
-    attachments: import("../types").Attachment[] = []
+  // ─── Notifications ─────────────────────────────────────────────────────────
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await notificationsService.update(id, { read: true });
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch {}
+  };
+
+  const markAllNotificationsReadForUser = async (userId: string) => {
+    const targets = notifications.filter(
+      (n) => (n.recipientId === userId || n.requesterId === userId) && !n.read
+    );
+    await Promise.all(targets.map((n) => markNotificationRead(n.id)));
+  };
+
+  // ─── Presence / typing ─────────────────────────────────────────────────────
+
+  const setUserPresence = (
+    userId: string,
+    status: PresenceStatus,
+    extra?: Partial<{ inHuddleTrackId: string | null }>
   ) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      userId: currentUser.id,
-      content,
-      timestamp: new Date().toISOString(),
-      trackId: trackId || tracks[0]?.id || "track-general",
-      pinned: false,
-      attachments: attachments && attachments.length ? attachments : undefined,
-      reactions: {},
-      readBy: [currentUser.id],
-    };
-    setMessages((prev) => [...prev, newMessage]);
-    // Mentions detection: @user or @track (by first-name/fullname and track name)
-    try {
-      const text = content || "";
-      const rawHandles = text.match(/@[A-Za-z0-9_\-]+/g) || [];
-      if (rawHandles.length) {
-        const handleSet = new Set(
-          rawHandles.map((h) => h.slice(1).toLowerCase())
-        );
-        const byUserId = new Set<string>();
-        const byTrackId = new Set<string>();
-
-        // Build user handle candidates (first name, full name nospace)
-        users.forEach((u) => {
-          const first = (u.name.split(/\s+/)[0] || "").toLowerCase();
-          const nospace = u.name.toLowerCase().replace(/\s+/g, "");
-          if (handleSet.has(first) || handleSet.has(nospace)) {
-            if (u.id !== currentUser.id) byUserId.add(u.id);
-          }
-        });
-        // Build track handles (track name)
-        tracks.forEach((t) => {
-          const tname = t.name.toLowerCase();
-          if (handleSet.has(tname)) byTrackId.add(t.id);
-        });
-
-        const notifs: Notification[] = [];
-        // User mentions
-        byUserId.forEach((uid) => {
-          notifs.push({
-            id: `n-${Date.now()}-${uid}`,
-            requesterId: currentUser.id,
-            recipientId: uid,
-            createdAt: new Date().toISOString(),
-            status: "INFO",
-            type: "MENTION",
-            messageId: newMessage.id,
-            trackId: newMessage.trackId,
-            read: false,
-          });
-        });
-        // Track mentions: notify all members (except sender)
-        byTrackId.forEach((tid) => {
-          const t = tracks.find((x) => x.id === tid);
-          (t?.members || []).forEach((uid) => {
-            if (uid === currentUser.id) return;
-            notifs.push({
-              id: `n-${Date.now()}-${tid}-${uid}`,
-              requesterId: currentUser.id,
-              recipientId: uid,
-              createdAt: new Date().toISOString(),
-              status: "INFO",
-              type: "MENTION",
-              messageId: newMessage.id,
-              trackId: newMessage.trackId,
-              read: false,
-            });
-          });
-        });
-        if (notifs.length) setNotifications((prev) => [...prev, ...notifs]);
-      }
-    } catch {}
-  };
-
-  const sendReply = (
-    parentId: string,
-    content: string,
-    trackId?: string,
-    attachments: import("../types").Attachment[] = []
-  ) => {
-    const parent = messages.find((m) => m.id === parentId);
-    const tid = trackId || parent?.trackId || tracks[0]?.id || "track-general";
-    const reply: Message = {
-      id: `${Date.now()}-r`,
-      userId: currentUser.id,
-      content,
-      timestamp: new Date().toISOString(),
-      trackId: tid,
-      parentId,
-      pinned: false,
-      attachments: attachments && attachments.length ? attachments : undefined,
-      reactions: {},
-      readBy: [currentUser.id],
-    };
-    setMessages((prev) => [...prev, reply]);
-  };
-
-  const pinMessage = (messageId: string, pinned: boolean) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, pinned } : m))
-    );
-  };
-
-  const deleteMessage = (messageId: string) => {
-    setMessages((prev) =>
-      prev.filter((m) => m.id !== messageId && m.parentId !== messageId)
-    );
-  };
-
-  const toggleReaction = (messageId: string, emoji: string, userId: string) => {
-    const now = Date.now();
-    const notifId = `n-${now}-react-${messageId}-${emoji}-${userId}`;
-    const createdAt = new Date(now).toISOString();
-    setMessages((prev) =>
-      prev.map((m) => {
-        if (m.id !== messageId) return m;
-        const map = { ...(m.reactions || {}) } as Record<string, string[]>;
-        const before = new Set(map[emoji] || []);
-        const after = new Set(before);
-        let added = false;
-        if (after.has(userId)) {
-          after.delete(userId);
-        } else {
-          after.add(userId);
-          added = true;
-        }
-        map[emoji] = Array.from(after);
-
-        // If a new reaction was added and the message author isn't the reactor, notify them
-        try {
-          if (added && m.userId !== userId) {
-            setNotifications((prevN) => {
-              if (prevN.some((n) => n.id === notifId)) return prevN;
-              return [
-                ...prevN,
-                {
-                  id: notifId,
-                  messageId: m.id,
-                  trackId: m.trackId,
-                  emoji: emoji,
-                  requesterId: userId,
-                  recipientId: m.userId,
-                  createdAt,
-                  status: "INFO",
-                  type: "REACTION",
-                  read: false,
-                },
-              ];
-            });
-          }
-        } catch {}
-
-        return { ...m, reactions: map };
-      })
-    );
-  };
-
-  const requestTaskApproval = (taskId: string) => {
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task) return;
-    const isAdmin = currentUser.role === "ADMIN";
-    // Only admin or assignee can request approval
-    if (!isAdmin && currentUser.id !== task.assigneeId) return;
-    setNotifications((prev) => [
+    const now = new Date().toISOString();
+    setPresence((prev) => ({
       ...prev,
-      {
-        id: `n-${Date.now()}`,
-        taskId,
-        requesterId: currentUser.id,
-        recipientId: users.find((u) => u.role === "ADMIN")?.id,
-        createdAt: new Date().toISOString(),
-        status: "PENDING",
-        type: "APPROVAL_REQUEST",
-        read: false,
+      [userId]: {
+        status,
+        lastActive: now,
+        inHuddleTrackId:
+          extra && "inHuddleTrackId" in extra
+            ? extra.inHuddleTrackId ?? null
+            : prev[userId]?.inHuddleTrackId ?? null,
       },
-    ]);
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId ? { ...t, status: TaskStatus.REVIEW } : t
-      )
-    );
-  };
-
-  const approveTask = (taskId: string) => {
-    if (currentUser.role !== "ADMIN") return;
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: TaskStatus.DONE } : t))
-    );
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.taskId === taskId ? { ...n, status: "APPROVED", read: false } : n
-      )
-    );
-  };
-
-  const rejectTask = (taskId: string) => {
-    if (currentUser.role !== "ADMIN") return;
-    // Keep task in REVIEW; mark notification rejected
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.taskId === taskId ? { ...n, status: "REJECTED", read: false } : n
-      )
-    );
-  };
-
-  const markNotificationRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
-
-  const markAllNotificationsReadForUser = (userId: string) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        // Mark as read if relevant to user
-        n.recipientId === userId || n.requesterId === userId
-          ? { ...n, read: true }
-          : n
-      )
-    );
-  };
-
-  const addTrack = (name: string) => {
-    const normalized = name.trim();
-    if (!normalized) return null;
-    // Prevent duplicates (case-insensitive)
-    const exists = tracks.some(
-      (t) => t.name.toLowerCase() === normalized.toLowerCase()
-    );
-    if (exists) return null;
-    const track: Track = {
-      id: `track-${Date.now()}`,
-      name: normalized,
-      createdAt: new Date().toISOString(),
-      members: users.map((u) => u.id),
-    };
-    setTracks((prev) => [...prev, track]);
-    return track;
-  };
-
-  const addMemberToTrack = (trackId: string, userId: string) => {
-    setTracks((prev) =>
-      prev.map((t) =>
-        t.id === trackId && !t.members.includes(userId)
-          ? { ...t, members: [...t.members, userId] }
-          : t
-      )
-    );
-  };
-
-  const removeMemberFromTrack = (trackId: string, userId: string) => {
-    setTracks((prev) =>
-      prev.map((t) =>
-        t.id === trackId
-          ? { ...t, members: t.members.filter((id) => id !== userId) }
-          : t
-      )
-    );
-  };
-
-  const renameTrack = (trackId: string, name: string) => {
-    const normalized = name.trim();
-    if (!normalized) return;
-    setTracks((prev) =>
-      prev.map((t) => (t.id === trackId ? { ...t, name: normalized } : t))
-    );
-  };
-
-  const deleteTrack = (trackId: string) => {
-    // Prevent deletion of general
-    if (trackId === "track-general") return;
-    setTracks((prev) => prev.filter((t) => t.id !== trackId));
-  };
-
-  const login = async (email: string, password?: string) => {
-    try {
-      const res = await api.post("/auth/login", { email, password });
-      setIsAuthenticated(true);
-      if (res.data.user) {
-        setCurrentUser(res.data.user);
-        window.localStorage.setItem(USER_STORAGE_KEY, res.data.user.id);
-      }
-      window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
-      toast.success("Successfully logged in");
-      return true;
-    } catch (err: any) {
-      if (err.response?.status !== 403) {
-        // error messages are handled by api interceptor
-      }
-      return false;
+    }));
+    // Tell server
+    if (userId === currentUser.id) {
+      socket?.emit("presence:set", { status });
     }
   };
 
-  const signup = async (name: string, email: string, password?: string, avatar?: string) => {
-    try {
-      const res = await api.post("/auth/register", { name, email, password, avatar });
-      toast.success(res.data.message || "Signup successful. Please verify your email.");
-      return true;
-    } catch (err: any) {
-      return false;
+  const dmThreadKey = (a: string, b: string) => [a, b].sort().join("|");
+
+  const setTyping = (trackId: string, userId: string, isTyping: boolean) => {
+    setTypingByTrack((prev) => {
+      const cur = new Set(prev[trackId] ?? []);
+      if (isTyping) cur.add(userId); else cur.delete(userId);
+      return { ...prev, [trackId]: Array.from(cur) };
+    });
+    if (userId === currentUser.id) {
+      if (isTyping) socket?.emit("typing:start", { trackId });
+      else socket?.emit("typing:stop", { trackId });
     }
   };
 
-  const verifyOtp = async (email: string, otp: string) => {
-    try {
-      const res = await api.post("/auth/verify-otp", { email, otp });
-      setIsAuthenticated(true);
-      if (res.data.user) {
-        setCurrentUser(res.data.user);
-        window.localStorage.setItem(USER_STORAGE_KEY, res.data.user.id);
+  const setDmTyping = (withUserId: string, userId: string, isTyping: boolean) => {
+    const key = dmThreadKey(currentUser.id, withUserId);
+    setTypingByDm((prev) => {
+      const cur = new Set(prev[key] ?? []);
+      if (isTyping) cur.add(userId); else cur.delete(userId);
+      const arr = Array.from(cur);
+      if (arr.length === 0) {
+        const { [key]: _, ...rest } = prev;
+        return rest;
       }
-      window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
-      toast.success("Email verified successfully!");
-      return true;
-    } catch {
-      return false;
+      return { ...prev, [key]: arr };
+    });
+    if (userId === currentUser.id) {
+      if (isTyping) socket?.emit("typing:start", { dmKey: key });
+      else socket?.emit("typing:stop", { dmKey: key });
     }
   };
 
-  const logout = async () => {
-    try {
-      await api.post("/auth/logout");
-    } catch (e) {}
-    setIsAuthenticated(false);
-    window.localStorage.setItem(AUTH_STORAGE_KEY, "false");
-    window.location.hash = "#/login";
-  };
+  // ─── Presence: send online/idle on visibility change ───────────────────────
 
-  // Persist tasks to localStorage whenever they change
   useEffect(() => {
-    try {
-      window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
-    } catch {}
-  }, [tasks]);
-
-  // Persist messages
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        MESSAGES_STORAGE_KEY,
-        JSON.stringify(messages)
-      );
-    } catch {}
-  }, [messages]);
-
-  // Persist tracks
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(TRACKS_STORAGE_KEY, JSON.stringify(tracks));
-    } catch {}
-  }, [tracks]);
-
-  // Persist direct messages
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        DMS_STORAGE_KEY,
-        JSON.stringify(directMessages)
-      );
-    } catch {}
-  }, [directMessages]);
-
-  // Persist notifications
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        NOTIFS_STORAGE_KEY,
-        JSON.stringify(notifications)
-      );
-    } catch {}
-  }, [notifications]);
-
-  // Persist users
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    } catch {}
-  }, [users]);
-
-  // Persist presence & typing
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        PRESENCE_STORAGE_KEY,
-        JSON.stringify(presence)
-      );
-    } catch {}
-  }, [presence]);
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        TYPING_STORAGE_KEY,
-        JSON.stringify(typingByTrack)
-      );
-    } catch {}
-  }, [typingByTrack]);
-
-  // Initialize current user's presence and listen for cross-tab updates
-  useEffect(() => {
-    // Mark current user online on mount
-    setUserPresence(currentUser.id, "online");
-
-    const onBeforeUnload = () => {
-      try {
-        const now = new Date().toISOString();
-        const next = { ...presence };
-        next[currentUser.id] = {
-          status: "offline",
-          lastActive: now,
-          inHuddleTrackId: next[currentUser.id]?.inHuddleTrackId ?? null,
-        };
-        window.localStorage.setItem(PRESENCE_STORAGE_KEY, JSON.stringify(next));
-      } catch {}
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-
+    if (!isAuthenticated || !currentUser.id) return;
     const onVisibility = () => {
-      if (document.hidden) setUserPresence(currentUser.id, "idle");
-      else setUserPresence(currentUser.id, "online");
+      setUserPresence(currentUser.id, document.hidden ? "idle" : "online");
     };
     document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, currentUser.id, socket]);
 
-    const onMouse = () => setUserPresence(currentUser.id, "online");
-    const onKey = () => setUserPresence(currentUser.id, "online");
-    window.addEventListener("mousemove", onMouse);
-    window.addEventListener("keydown", onKey);
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === PRESENCE_STORAGE_KEY) {
-        try {
-          const parsed = JSON.parse(e.newValue || "{}") as PresenceMap;
-          setPresence(parsed || {});
-        } catch {}
-      }
-      if (e.key === TYPING_STORAGE_KEY) {
-        try {
-          const parsed = JSON.parse(e.newValue || "{}") as TypingByTrack;
-          setTypingByTrack(parsed || {});
-        } catch {}
-      }
-    };
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      window.removeEventListener("beforeunload", onBeforeUnload);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("mousemove", onMouse);
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("storage", onStorage);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser.id]);
+  // ─── Context value ─────────────────────────────────────────────────────────
 
   return (
     <AppContext.Provider
@@ -1128,49 +689,50 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
         users,
         tasks,
         messages,
-        directMessages,
         tracks,
         notifications,
+        directMessages,
         presence,
         typingByTrack,
         typingByDm,
         isAuthenticated,
-        switchUser,
-        addUser,
-        updateCurrentUser,
+        isLoading,
         login,
         signup,
         verifyOtp,
         logout,
+        addUser,
+        switchUser,
+        updateCurrentUser,
         removeUser,
         addTask,
         updateTask,
         updateTaskStatus,
-        sendMessage,
-        sendReply,
-        pinMessage,
-        deleteMessage,
-        toggleReaction,
-        toggleDirectMessageReaction,
+        deleteTask,
         requestTaskApproval,
         approveTask,
         rejectTask,
-        markNotificationRead,
-        markAllNotificationsReadForUser,
+        addTaskReminder,
         addTrack,
         addMemberToTrack,
         removeMemberFromTrack,
         renameTrack,
         deleteTrack,
-        deleteTask,
-        setUserPresence,
-        setTyping,
-        setDmTyping,
+        sendMessage,
+        sendReply,
+        pinMessage,
+        deleteMessage,
+        toggleReaction,
         markTrackRead,
         sendDirectMessage,
         markDmThreadRead,
         setDirectMessageStatus,
-        addTaskReminder,
+        toggleDirectMessageReaction,
+        markNotificationRead,
+        markAllNotificationsReadForUser,
+        setUserPresence,
+        setTyping,
+        setDmTyping,
       }}
     >
       {children}
@@ -1179,7 +741,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
 };
 
 export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) throw new Error("useApp must be used within AppProvider");
-  return context;
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("useApp must be used within AppProvider");
+  return ctx;
 };

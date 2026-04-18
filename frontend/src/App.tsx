@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AppProvider } from "./context/AppContext";
+import { SocketProvider } from "./context/SocketContext";
 import { CallProvider } from "./context/CallContext";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
@@ -27,6 +28,7 @@ import SearchPage from "./pages/Search";
 import { ThemeProvider } from "./context/ThemeContext";
 import { useTheme } from "./context/ThemeContext";
 import { Toaster } from "react-hot-toast";
+import { useSocket } from "./context/SocketContext";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -196,108 +198,142 @@ function App() {
     const { isAuthenticated } = useApp();
     return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing />;
   };
+
+  /**
+   * SocketConnector — lives inside AppProvider + SocketProvider so it can read
+   * auth state and the access token from localStorage, then call socket.connect().
+   * On logout / unauthenticated, it tears the socket down.
+   */
+  const SocketConnector = ({ children }: { children: React.ReactNode }) => {
+    const { isAuthenticated } = useApp();
+    const { connect, disconnect, isConnected } = useSocket();
+
+    useEffect(() => {
+      if (isAuthenticated) {
+        // Grab the JWT that was stored at login
+        const token =
+          localStorage.getItem("nebula.accessToken") ||
+          localStorage.getItem("nebula.token.v1") ||
+          "";
+        if (token && !isConnected) {
+          connect(token);
+        }
+      } else {
+        disconnect();
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthenticated]);
+
+    return <>{children}</>;
+  };
+
   return (
     <ThemeProvider>
       <AppProvider>
-        <CallProvider>
-          <HashRouter>
-            <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
-            <Layout>
-              <ErrorBoundary>
-                <Routes>
-                  <Route path="/" element={<HomeRoute />} />
-                  <Route path="/landing" element={<Landing />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <RequireAuth>
-                        <Dashboard />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/tasks"
-                    element={
-                      <RequireAuth>
-                        <TaskBoard />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/chat"
-                    element={
-                      <RequireAuth>
-                        <Chat />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/search"
-                    element={
-                      <RequireAuth>
-                        <SearchPage />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/inbox"
-                    element={
-                      <RequireAuth>
-                        <Inbox />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/members"
-                    element={
-                      <RequireAuth>
-                        <Members />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/profile"
-                    element={
-                      <RequireAuth>
-                        <Profile />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/notifications"
-                    element={
-                      <RequireAuth>
-                        <Notifications />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/huddles"
-                    element={
-                      <RequireAuth>
-                        <Huddles />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route
-                    path="/admin"
-                    element={
-                      <RequireAuth>
-                        <AdminPanel />
-                      </RequireAuth>
-                    }
-                  />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </ErrorBoundary>
-            </Layout>
-          </HashRouter>
-        </CallProvider>
+        <SocketProvider>
+          <SocketConnector>
+            <CallProvider>
+              <HashRouter>
+                <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
+                <Layout>
+                  <ErrorBoundary>
+                    <Routes>
+                      <Route path="/" element={<HomeRoute />} />
+                      <Route path="/landing" element={<Landing />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/signup" element={<Signup />} />
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <RequireAuth>
+                            <Dashboard />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/tasks"
+                        element={
+                          <RequireAuth>
+                            <TaskBoard />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/chat"
+                        element={
+                          <RequireAuth>
+                            <Chat />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/search"
+                        element={
+                          <RequireAuth>
+                            <SearchPage />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/inbox"
+                        element={
+                          <RequireAuth>
+                            <Inbox />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/members"
+                        element={
+                          <RequireAuth>
+                            <Members />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/profile"
+                        element={
+                          <RequireAuth>
+                            <Profile />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/notifications"
+                        element={
+                          <RequireAuth>
+                            <Notifications />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/huddles"
+                        element={
+                          <RequireAuth>
+                            <Huddles />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/admin"
+                        element={
+                          <RequireAuth>
+                            <AdminPanel />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </ErrorBoundary>
+                </Layout>
+              </HashRouter>
+            </CallProvider>
+          </SocketConnector>
+        </SocketProvider>
       </AppProvider>
     </ThemeProvider>
   );
 }
 
 export default App;
+
