@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc && cp -r src/assets dist/assets",
-    "start": "node dist/index.js",
+    "_comment_build": "tsc mirrors the shared/ types directory into dist/ because they're imported from outside src/ via the @nebula/shared path alias. That pushes the compiled entry to dist/server/src/index.js — scripts below reflect that.",
+    "build": "prisma generate && tsc && cp -r src/assets dist/server/src/assets",
+    "start": "node dist/server/src/index.js",
     "db:deploy": "prisma migrate deploy",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
