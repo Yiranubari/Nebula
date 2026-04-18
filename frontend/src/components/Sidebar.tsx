@@ -13,12 +13,9 @@ import {
   Users as UsersIcon,
   Inbox as InboxIcon,
   Search as SearchIcon,
-  Moon,
-  Sun,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import Avatar from "./Avatar";
-import { useTheme } from "../context/ThemeContext";
 
 interface SidebarProps {
   variant?: "desktop" | "mobile";
@@ -41,7 +38,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     directMessages,
     presence,
   } = useApp();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
@@ -241,38 +237,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       <div className="p-4 border-t border-slate-100 dark:border-white/10">
-        <div className="mb-4 px-2">
-          <p className="text-[10px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2">
-            Theme
-          </p>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="w-full px-3 py-2 text-xs rounded-lg bg-slate-100/70 hover:bg-slate-200/70 text-slate-700 inline-flex items-center justify-center gap-2 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-100 border border-slate-200/60 dark:border-white/10 transition-colors"
-            aria-label={
-              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
-            }
-          >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            {theme === "dark" ? "Light mode" : "Dark mode"}
-          </button>
-        </div>
-
-        {isAuthenticated && (
-          <div className="mb-4 px-2">
-            <p className="text-[10px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2">
-              Account
-            </p>
-            <button
-              onClick={() => setConfirmLogout(true)}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-100/70 hover:bg-slate-200/70 text-slate-700 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-100 border border-slate-200/60 dark:border-white/10 transition-colors"
-            >
-              Sign in as different user
-            </button>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 px-2 pt-2">
+        <div className="flex items-center gap-3 px-2">
           <Avatar
             src={currentUser.avatar}
             name={currentUser.name}

@@ -139,23 +139,23 @@ function otpCodeBlock(otp: string, minutes = 15): string {
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
       <tr>
         <td style="
-          padding:22px 16px;
-          background:rgba(99,102,241,0.08);
-          border:1px solid rgba(99,102,241,0.35);
-          border-radius:14px;
+          padding:18px 16px;
+          background:rgba(255,255,255,0.03);
+          border:1px solid ${CARD_BORDER};
+          border-radius:12px;
           text-align:center;
         ">
           <div style="
             font-family:${FONT};
-            font-size:11px;letter-spacing:3px;text-transform:uppercase;
-            color:${ACCENT};font-weight:600;margin-bottom:10px;
-          ">Your verification code</div>
+            font-size:11px;letter-spacing:2px;text-transform:uppercase;
+            color:${MUTED};font-weight:600;margin-bottom:8px;
+          ">Verification code</div>
           <div style="
             font-family:'SF Mono','Menlo','Consolas','Liberation Mono',monospace;
-            font-size:32px;font-weight:700;color:${HEADING};letter-spacing:8px;
+            font-size:28px;font-weight:700;color:${HEADING};letter-spacing:6px;
           ">${spaced}</div>
           <div style="
-            margin-top:10px;font-family:${FONT};font-size:12px;color:${MUTED};
+            margin-top:8px;font-family:${FONT};font-size:12px;color:${MUTED};
           ">Expires in ${minutes} minutes</div>
         </td>
       </tr>
@@ -218,36 +218,25 @@ export function inviteEmail(args: {
     `${inviter} has invited you to join Nebula.\n\n` +
     `Use this code to finish setting up your account: ${otp}\n` +
     `The code expires in 15 minutes.\n\n` +
-    `Complete your invitation: ${completeUrl}`;
+    `Open the invitation page: ${completeUrl}`;
 
-  const button = `
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0 0;">
-      <tr>
-        <td style="
-          border-radius:999px;
-          background:#6366f1;
-          background-image:linear-gradient(135deg,#6366f1 0%,#a855f7 100%);
-          box-shadow:0 8px 24px rgba(99,102,241,0.45);
-        ">
-          <a href="${completeUrl}" style="
-            display:inline-block;
-            padding:12px 22px;
-            font-family:${FONT};
-            font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;
-            border-radius:999px;
-          ">Complete your invitation &rarr;</a>
-        </td>
-      </tr>
-    </table>
+  const linkLine = `
+    <p style="margin:16px 0 0 0;font-family:${FONT};font-size:14px;line-height:1.6;color:${TEXT};">
+      Open
+      <a href="${completeUrl}" style="color:${ACCENT};text-decoration:underline;">
+        the invitation page
+      </a>
+      and enter the code to finish setting up your account.
+    </p>
   `;
 
   const html = layout({
     preview: `${inviter} invited you to Nebula.`,
     title: `You've been invited to Nebula`,
-    intro: `${inviter} added you to their workspace. Enter the code below on the invitation page to finish setting up your account. You'll set your name and password there — no need to create one first.`,
-    bodyHtml: otpCodeBlock(otp) + button,
+    intro: `${inviter} added you to the workspace. You'll set your name and password on the invitation page — no need to create a login first.`,
+    bodyHtml: otpCodeBlock(otp) + linkLine,
     footerNote:
-      "If you didn't expect this invitation, you can safely ignore this email — no account was created until you complete the steps above.",
+      "If you didn't expect this invitation, you can safely ignore this email.",
   });
 
   return { subject, text, html };

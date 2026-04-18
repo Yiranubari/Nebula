@@ -63,6 +63,32 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+/**
+ * Small theme toggle that floats in the top-right of the main content on
+ * desktop. Lives outside the sidebar so that the sidebar can stay focused
+ * on navigation. The mobile top-bar has its own inline version.
+ */
+const DesktopThemeToggle = () => {
+  const { isAuthenticated } = useApp();
+  const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
+  const isPublicRoute = ["/", "/login", "/signup", "/landing"].includes(
+    location.pathname
+  );
+  if (!isAuthenticated || isPublicRoute) return null;
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className="hidden md:inline-flex fixed top-4 right-4 z-40 h-9 w-9 items-center justify-center rounded-full bg-white/80 dark:bg-white/5 backdrop-blur border border-slate-200/70 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 shadow-sm"
+      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      title={theme === "dark" ? "Light mode" : "Dark mode"}
+    >
+      {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+    </button>
+  );
+};
+
 const ConnectionBanner = () => {
   const { isAuthenticated } = useApp();
   const { isConnected, isReconnecting, hasAttempted } = useSocket();
@@ -279,6 +305,7 @@ function App() {
               <HashRouter>
                 <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
                 <ConnectionBanner />
+                <DesktopThemeToggle />
                 <Layout>
                   <ErrorBoundary>
                     <Routes>
