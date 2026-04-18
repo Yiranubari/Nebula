@@ -19,6 +19,9 @@ dist-ssr
 frontend/dist
 server/dist
 shared/dist
+# `shared/` is a source-only package — compiled .js files sneak in when tsc
+# is run with the wrong cwd and then break Rollup (which prefers .js over .ts).
+shared/types/*.js
 *.local
 
 # Editor directories and files
