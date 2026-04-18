@@ -6,13 +6,9 @@ import {
   MessageSquare,
   Kanban,
   ArrowRight,
-  Github,
-  Twitter,
-  Linkedin,
   Zap,
   Globe,
   Layers,
-  Sparkles
 } from "lucide-react";
 
 const Landing = () => {
@@ -68,11 +64,6 @@ const Landing = () => {
       {/* Hero Section */}
       <main className="relative z-10 flex flex-col items-center justify-center pt-24 pb-32 px-6 text-center">
         <div className={`transition-all duration-1000 ease-out flex flex-col items-center ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-8 backdrop-blur-md shadow-[0_0_20px_rgba(99,102,241,0.1)] hover:bg-indigo-500/20 transition-colors cursor-default">
-            <Sparkles size={16} className="text-indigo-400" />
-            <span>Nebula 2.0 is live</span>
-          </div>
-          
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-white/90 to-white/60 max-w-4xl leading-[1.1] mb-6">
             The workspace for <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">visionary teams</span>
           </h1>
@@ -243,17 +234,6 @@ const Landing = () => {
           <p className="text-sm text-slate-500 font-light">
             © {year} Nebula platform. All rights reserved. Built for the modern team.
           </p>
-          <div className="flex items-center gap-4">
-            <a href="https://github.com" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
-              <Github size={18} />
-            </a>
-            <a href="https://twitter.com" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
-              <Twitter size={18} />
-            </a>
-            <a href="https://linkedin.com" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
-              <Linkedin size={18} />
-            </a>
-          </div>
         </div>
       </footer>
     </div>

@@ -24,6 +24,7 @@ import React, {
   useState,
 } from "react";
 import SimplePeer from "simple-peer";
+import toast from "react-hot-toast";
 import { useApp } from "./AppContext";
 import { useSocket } from "./SocketContext";
 
@@ -57,6 +58,11 @@ export type CallState = {
   /** userId of whoever we're currently displaying a screen share from. */
   activeScreenSharerId: string | null;
   handRaised: boolean;
+  /** Our local camera stream, if our webcam is on. */
+  localCameraStream: MediaStream | null;
+  cameraOn: boolean;
+  /** Remote participants' camera streams, keyed by userId. */
+  remoteCameraStreams: Record<string, MediaStream>;
 };
 
 type CallContextType = CallState & {
@@ -69,6 +75,7 @@ type CallContextType = CallState & {
   raiseHand: () => void;
   setOutputDeviceId: (deviceId: string) => Promise<void>;
   toggleScreenShare: () => Promise<void>;
+  toggleCamera: () => Promise<void>;
 };
 
 // ─── Internal peer record ─────────────────────────────────────────────────────
@@ -103,6 +110,9 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     isScreenSharing: false,
     activeScreenSharerId: null,
     handRaised: false,
+    localCameraStream: null,
+    cameraOn: false,
+    remoteCameraStreams: {},
   });
 
   // Stable refs so socket event handlers don't stale-close over state
@@ -121,6 +131,10 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     const el = document.createElement("audio");
     el.style.display = "none";
     el.autoplay = true;
+    // Muted ALWAYS — this element exists only so the browser keeps the
+    // local stream "hot" and so `setSinkId` has something to bind to.
+    // If we let it play, the user hears their own mic in real time (echo).
+    el.muted = true;
     document.body.appendChild(el);
     localAudioRef.current = el;
 
@@ -240,48 +254,73 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    // When a remote stream arrives — the first stream per peer is the audio
-    // stream they joined with; any later stream is a screen share. A screen
-    // share is detected by the presence of at least one live video track.
+    // Each `stream` event is either:
+    //   - the remote's original audio-only stream (initial join)
+    //   - a screen share (video track whose getSettings() exposes
+    //     `displaySurface`, which getDisplayMedia always sets)
+    //   - a camera video stream (any other video track)
     peer.on("stream", (remoteStream) => {
-      const hasVideo = remoteStream.getVideoTracks().length > 0;
-      if (!hasVideo) {
+      const videoTracks = remoteStream.getVideoTracks();
+      if (videoTracks.length === 0) {
         audioEl.srcObject = remoteStream;
         return;
       }
 
-      setState((prev) => ({
-        ...prev,
-        remoteScreenStreams: {
-          ...prev.remoteScreenStreams,
-          [remoteUserId]: remoteStream,
-        },
-        isScreenSharing: true,
-        activeScreenSharerId: prev.activeScreenSharerId ?? remoteUserId,
-      }));
-
-      const cleanup = () => {
-        setState((prev) => {
-          const { [remoteUserId]: _gone, ...rest } = prev.remoteScreenStreams;
-          const remainingIds = Object.keys(rest);
-          const stillSharing =
-            remainingIds.length > 0 || !!prev.localScreenStream;
-          return {
-            ...prev,
-            remoteScreenStreams: rest,
-            isScreenSharing: stillSharing,
-            activeScreenSharerId:
-              prev.activeScreenSharerId === remoteUserId
-                ? remainingIds[0] ??
-                  (prev.localScreenStream ? currentUser.id : null)
-                : prev.activeScreenSharerId,
-          };
-        });
-      };
-
-      remoteStream.getVideoTracks().forEach((t) => {
-        t.addEventListener("ended", cleanup);
+      const looksLikeScreen = videoTracks.some((t) => {
+        const s = t.getSettings() as MediaTrackSettings & {
+          displaySurface?: string;
+        };
+        return !!s.displaySurface;
       });
+
+      if (looksLikeScreen) {
+        setState((prev) => ({
+          ...prev,
+          remoteScreenStreams: {
+            ...prev.remoteScreenStreams,
+            [remoteUserId]: remoteStream,
+          },
+          isScreenSharing: true,
+          activeScreenSharerId: prev.activeScreenSharerId ?? remoteUserId,
+        }));
+
+        const cleanup = () => {
+          setState((prev) => {
+            const { [remoteUserId]: _gone, ...rest } =
+              prev.remoteScreenStreams;
+            const remainingIds = Object.keys(rest);
+            const stillSharing =
+              remainingIds.length > 0 || !!prev.localScreenStream;
+            return {
+              ...prev,
+              remoteScreenStreams: rest,
+              isScreenSharing: stillSharing,
+              activeScreenSharerId:
+                prev.activeScreenSharerId === remoteUserId
+                  ? remainingIds[0] ??
+                    (prev.localScreenStream ? currentUser.id : null)
+                  : prev.activeScreenSharerId,
+            };
+          });
+        };
+        videoTracks.forEach((t) => t.addEventListener("ended", cleanup));
+      } else {
+        // Remote camera video
+        setState((prev) => ({
+          ...prev,
+          remoteCameraStreams: {
+            ...prev.remoteCameraStreams,
+            [remoteUserId]: remoteStream,
+          },
+        }));
+        const cleanup = () => {
+          setState((prev) => {
+            const { [remoteUserId]: _gone, ...rest } = prev.remoteCameraStreams;
+            return { ...prev, remoteCameraStreams: rest };
+          });
+        };
+        videoTracks.forEach((t) => t.addEventListener("ended", cleanup));
+      }
     });
 
     peer.on("error", (err) => {
@@ -310,17 +349,50 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         (p) => p.userId !== currentUser.id
       );
 
-      // Build participants list
-      setState((prev) => ({
-        ...prev,
-        participants: [
-          { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar, muted: prev.muted },
-          ...remoteUsers.map((p) => {
+      // Build participants list, diffing against the previous state so we can
+      // surface Meet-style "X raised their hand" toasts whenever someone
+      // other than us flips their handRaised.
+      setState((prev) => {
+        const prevById = new Map<string, CallParticipant>(
+          prev.participants.map((p) => [p.id, p])
+        );
+        for (const p of payload.participants) {
+          if (p.userId === currentUser.id) continue;
+          const before = prevById.get(p.userId);
+          if (before && before.handRaised !== p.handRaised) {
             const u = users.find((u) => u.id === p.userId);
-            return { id: p.userId, name: u?.name ?? p.userId, avatar: u?.avatar, muted: p.muted, handRaised: p.handRaised };
-          }),
-        ],
-      }));
+            const name = u?.name ?? "Someone";
+            if (p.handRaised) {
+              toast(`✋ ${name} raised their hand`, { duration: 3500 });
+            } else {
+              toast(`${name} lowered their hand`, { duration: 2000 });
+            }
+          }
+        }
+
+        return {
+          ...prev,
+          participants: [
+            {
+              id: currentUser.id,
+              name: currentUser.name,
+              avatar: currentUser.avatar,
+              muted: prev.muted,
+              handRaised: prev.handRaised,
+            },
+            ...remoteUsers.map((p) => {
+              const u = users.find((u) => u.id === p.userId);
+              return {
+                id: p.userId,
+                name: u?.name ?? p.userId,
+                avatar: u?.avatar,
+                muted: p.muted,
+                handRaised: p.handRaised,
+              };
+            }),
+          ],
+        };
+      });
 
       // Initiate connections to existing participants
       for (const remote of remoteUsers) {
@@ -448,14 +520,16 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
   // ─── Public API: leaveHuddle ──────────────────────────────────────────────
 
   const leaveHuddle = () => {
-    const { roomId, localStream, localScreenStream } = stateRef.current;
+    const { roomId, localStream, localScreenStream, localCameraStream } =
+      stateRef.current;
 
     // Notify server
     if (roomId) socket?.emit("huddle:leave", { roomId });
 
-    // Stop local tracks (mic + screen share)
+    // Stop local tracks (mic + screen + camera)
     localStream?.getTracks().forEach((t) => t.stop());
     localScreenStream?.getTracks().forEach((t) => t.stop());
+    localCameraStream?.getTracks().forEach((t) => t.stop());
 
     // Destroy all peer connections
     destroyAllPeers();
@@ -475,6 +549,9 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       remoteScreenStreams: {},
       isScreenSharing: false,
       activeScreenSharerId: null,
+      localCameraStream: null,
+      cameraOn: false,
+      remoteCameraStreams: {},
       activeRooms: prev.activeRooms.filter((id) => id !== roomId),
     }));
   };
@@ -587,6 +664,67 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // ─── Public API: toggleCamera ─────────────────────────────────────────────
+
+  const toggleCamera = async () => {
+    const { localCameraStream } = stateRef.current;
+
+    // Turn off
+    if (localCameraStream) {
+      localCameraStream.getTracks().forEach((t) => t.stop());
+      for (const { peer } of peersRef.current.values()) {
+        try {
+          (peer as any).removeStream?.(localCameraStream);
+        } catch {}
+      }
+      setState((prev) => ({
+        ...prev,
+        localCameraStream: null,
+        cameraOn: false,
+      }));
+      return;
+    }
+
+    // Turn on
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user",
+        },
+        audio: false,
+      });
+
+      for (const { peer } of peersRef.current.values()) {
+        try {
+          (peer as any).addStream?.(stream);
+        } catch (err) {
+          console.warn("[Huddle] camera addStream failed:", err);
+        }
+      }
+
+      // Clean up if the user kills the track from browser UI / unplugs the cam.
+      stream.getVideoTracks().forEach((t) => {
+        t.addEventListener("ended", () => {
+          setState((prev) => ({
+            ...prev,
+            localCameraStream: null,
+            cameraOn: false,
+          }));
+        });
+      });
+
+      setState((prev) => ({
+        ...prev,
+        localCameraStream: stream,
+        cameraOn: true,
+      }));
+    } catch (err) {
+      console.warn("[Huddle] camera failed:", err);
+    }
+  };
+
   // ─── Public API: setInputDeviceId ─────────────────────────────────────────
 
   const setInputDeviceId = async (deviceId: string) => {
@@ -654,6 +792,7 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     raiseHand,
     setOutputDeviceId,
     toggleScreenShare,
+    toggleCamera,
   };
 
   return <CallContext.Provider value={value}>{children}</CallContext.Provider>;
