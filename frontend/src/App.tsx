@@ -29,6 +29,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { useTheme } from "./context/ThemeContext";
 import { Toaster } from "react-hot-toast";
 import { useSocket } from "./context/SocketContext";
+import { warmupBackend } from "./services/api";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -257,6 +258,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  // Warm up the backend the moment the SPA loads so a cold-started Render
+  // instance is already booting by the time the user clicks "Sign in".
+  // No-op on localhost / fast hosts; cheap health ping otherwise.
+  useEffect(() => {
+    void warmupBackend();
+  }, []);
+
   const RequireAuth = ({ children }: { children: React.ReactNode }) => {
     const { isAuthenticated } = useApp();
     if (!isAuthenticated) return <Navigate to="/login" replace />;

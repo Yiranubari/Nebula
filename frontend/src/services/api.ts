@@ -7,7 +7,31 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Be generous — Render's free tier can take up to ~60s to wake a sleeping
+  // instance. Anything longer is either a real outage or a hung request.
+  timeout: 75_000,
 });
+
+/**
+ * Fire-and-forget ping to `/health`. Hosts that spin down on inactivity
+ * (Render free, Fly autostop, etc.) take tens of seconds to wake on the
+ * first request. Calling this as soon as the app loads warms the instance
+ * so the user's actual action — clicking Sign in, loading the dashboard —
+ * hits a hot server instead of timing out.
+ */
+export async function warmupBackend(): Promise<void> {
+  try {
+    // Use the base host, not /api, since /health is mounted at the app root.
+    const base = api.defaults.baseURL?.replace(/\/api\/?$/, "") ?? "";
+    await fetch(`${base}/health`, {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-store",
+    });
+  } catch {
+    // Swallow — this is a best-effort warmup; real requests will still fire.
+  }
+}
 
 // Attach the stored access token to every request
 api.interceptors.request.use((config) => {
