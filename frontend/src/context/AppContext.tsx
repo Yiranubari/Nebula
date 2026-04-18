@@ -38,6 +38,8 @@ import {
 import type { DirectMessage, Attachment } from "../types";
 import { useSocket } from "./SocketContext";
 
+const ACCESS_TOKEN_KEY = "nebula.accessToken";
+
 // ─── Context interface ────────────────────────────────────────────────────────
 
 interface AppContextType {
@@ -63,6 +65,9 @@ interface AppContextType {
   // Users
   updateCurrentUser: (updates: Partial<Pick<User, "name" | "email" | "avatar">>) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
+  updateUserRole: (userId: string, role: "ADMIN" | "MEMBER") => Promise<void>;
+  inviteMember: (email: string) => Promise<User>;
+  completeInvite: (payload: { email: string; name: string; password: string; otp: string }) => Promise<boolean>;
   addUser: (user: User) => void;           // admin-only local add after API call
   switchUser: (userId: string) => void;    // dev helper — remove in prod
 
@@ -119,7 +124,7 @@ const USER_KEY = "nebula.user.v1";
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { socket } = useSocket();
+  const { socket, connect: connectSocket, disconnect: disconnectSocket } = useSocket();
 
   // ─── Core state ────────────────────────────────────────────────────────────
 
@@ -179,8 +184,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 
       localStorage.setItem(USER_KEY, me.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error("[AppContext] bootstrap failed:", err);
+      // If the stored session is no longer valid (e.g., token expired or server
+      // secret rotated), flip React state to match so downstream effects reset.
+      if (err?.response?.status === 401) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.setItem(AUTH_KEY, "false");
+        disconnectSocket();
+        setIsAuthenticated(false);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -218,6 +231,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ...prev,
         [payload.userId]: payload.info,
       }));
+    };
+
+    // Full presence map sent to us right after we connect — lets us render
+    // who's in a huddle (etc.) immediately instead of waiting for the next
+    // transition.
+    const onPresenceSnapshot = (payload: {
+      presence: Record<string, { status: PresenceStatus; lastActive: string; inHuddleTrackId?: string | null }>;
+    }) => {
+      setPresence((prev) => ({ ...prev, ...payload.presence }));
     };
 
     // Typing indicators
@@ -282,6 +304,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     socket.on("presence:update", onPresence);
+    socket.on("presence:snapshot", onPresenceSnapshot);
     socket.on("typing:update", onTyping);
     socket.on("message:new", onMessageNew);
     socket.on("message:updated", onMessageUpdated);
@@ -291,6 +314,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return () => {
       socket.off("presence:update", onPresence);
+      socket.off("presence:snapshot", onPresenceSnapshot);
       socket.off("typing:update", onTyping);
       socket.off("message:new", onMessageNew);
       socket.off("message:updated", onMessageUpdated);
@@ -302,15 +326,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
 
+  const applyFreshSession = (accessToken: string | undefined, user: User | undefined) => {
+    if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    localStorage.setItem(AUTH_KEY, "true");
+    if (user) setCurrentUser(user);
+    // Replace any stale socket with one that uses the fresh token.
+    // `connect()` is a no-op if the same token is already connected, and it
+    // tears down any stale socket when the token differs.
+    if (accessToken) connectSocket(accessToken);
+    // Bootstrap runs via the `[isAuthenticated]` effect when this flips from
+    // false → true. The stale-session case (bootstrap failed with 401 at
+    // startup) already flipped isAuthenticated back to false, so this just
+    // flips it forward again — no bounce.
+    setIsAuthenticated(true);
+  };
+
   const login = async (email: string, password?: string): Promise<boolean> => {
     try {
       const res = await api.post("/auth/login", { email, password });
-      if (res.data.accessToken) {
-        localStorage.setItem("nebula.accessToken", res.data.accessToken);
-      }
-      localStorage.setItem(AUTH_KEY, "true");
-      if (res.data.user) setCurrentUser(res.data.user);
-      setIsAuthenticated(true);
+      applyFreshSession(res.data.accessToken, res.data.user);
       toast.success("Welcome back!");
       return true;
     } catch {
@@ -331,12 +365,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const verifyOtp = async (email: string, otp: string): Promise<boolean> => {
     try {
       const res = await api.post("/auth/verify-otp", { email, otp });
-      if (res.data.accessToken) {
-        localStorage.setItem("nebula.accessToken", res.data.accessToken);
-      }
-      localStorage.setItem(AUTH_KEY, "true");
-      if (res.data.user) setCurrentUser(res.data.user);
-      setIsAuthenticated(true);
+      applyFreshSession(res.data.accessToken, res.data.user);
       toast.success("Email verified!");
       return true;
     } catch {
@@ -346,8 +375,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const logout = async (): Promise<void> => {
     try { await api.post("/auth/logout"); } catch {}
-    localStorage.removeItem("nebula.accessToken");
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.setItem(AUTH_KEY, "false");
+    disconnectSocket();
     setIsAuthenticated(false);
     setCurrentUser({ id: "", name: "", email: "", role: "MEMBER" });
     setUsers([]); setTasks([]); setMessages([]); setTracks([]);
@@ -377,6 +407,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await usersService.delete(userId);
     setUsers((prev) => prev.filter((u) => u.id !== userId));
     toast.success(userId === currentUser.id ? "Account deleted" : "Member removed");
+  };
+
+  const updateUserRole = async (userId: string, role: "ADMIN" | "MEMBER") => {
+    const updated = await usersService.updateRole(userId, role);
+    setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+    toast.success(
+      `${updated.name} is now ${role === "ADMIN" ? "an admin" : "a member"}`
+    );
+  };
+
+  const inviteMember = async (email: string): Promise<User> => {
+    const invitee = await usersService.invite(email);
+    // Drop-in-or-replace in the local list so admins see the pending row immediately.
+    setUsers((prev) => {
+      const idx = prev.findIndex((u) => u.id === invitee.id);
+      if (idx >= 0) {
+        const next = prev.slice();
+        next[idx] = invitee;
+        return next;
+      }
+      return [...prev, invitee];
+    });
+    toast.success(`Invitation sent to ${email}`);
+    return invitee;
+  };
+
+  const completeInvite = async (payload: {
+    email: string;
+    name: string;
+    password: string;
+    otp: string;
+  }): Promise<boolean> => {
+    try {
+      const res = await api.post("/auth/complete-invite", payload);
+      applyFreshSession(res.data.accessToken, res.data.user);
+      toast.success(res.data.message || "Welcome to Nebula!");
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   // ─── Tasks ─────────────────────────────────────────────────────────────────
@@ -735,6 +805,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         switchUser,
         updateCurrentUser,
         removeUser,
+        updateUserRole,
+        inviteMember,
+        completeInvite,
         addTask,
         updateTask,
         updateTaskStatus,

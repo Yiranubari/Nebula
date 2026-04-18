@@ -32,10 +32,15 @@ const Notifications = () => {
   });
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4">
-        Notifications
-      </h1>
+    <div className="p-6 md:p-8 max-w-5xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-brand">
+          Notifications
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Mentions, reactions, assignments and approval requests.
+        </p>
+      </div>
       {sorted.length > 0 && (
         <div className="mb-4 flex justify-end">
           <button
@@ -50,7 +55,7 @@ const Notifications = () => {
         </div>
       )}
       {sorted.length === 0 ? (
-        <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center">
+        <div className="glass-panel rounded-2xl p-10 text-center">
           <p className="text-slate-700 dark:text-slate-200 font-medium">
             You're all caught up
           </p>
@@ -60,8 +65,8 @@ const Notifications = () => {
           </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="glass-panel rounded-2xl shadow-sm">
+          <ul className="divide-y divide-slate-100/70 dark:divide-white/5">
             {sorted.map((n) => {
               const task = n.taskId
                 ? tasks.find((t) => t.id === n.taskId)

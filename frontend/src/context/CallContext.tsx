@@ -48,6 +48,15 @@ export type CallState = {
   inputDeviceId?: string;
   outputDevices: MediaDeviceInfo[];
   outputDeviceId?: string;
+  /** Our local screen-share stream, if we're currently sharing. */
+  localScreenStream: MediaStream | null;
+  /** A remote participant's screen stream, keyed by their userId. */
+  remoteScreenStreams: Record<string, MediaStream>;
+  /** true iff *any* participant (us or remote) is sharing. */
+  isScreenSharing: boolean;
+  /** userId of whoever we're currently displaying a screen share from. */
+  activeScreenSharerId: string | null;
+  handRaised: boolean;
 };
 
 type CallContextType = CallState & {
@@ -55,8 +64,11 @@ type CallContextType = CallState & {
   leaveHuddle: () => void;
   toggleMute: () => void;
   setInputDeviceId: (deviceId: string) => Promise<void>;
+  toggleHand: () => void;
+  /** @deprecated alias of toggleHand, kept for back-compat */
   raiseHand: () => void;
   setOutputDeviceId: (deviceId: string) => Promise<void>;
+  toggleScreenShare: () => Promise<void>;
 };
 
 // ─── Internal peer record ─────────────────────────────────────────────────────
@@ -86,6 +98,11 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     activeRooms: [],
     inputDevices: [],
     outputDevices: [],
+    localScreenStream: null,
+    remoteScreenStreams: {},
+    isScreenSharing: false,
+    activeScreenSharerId: null,
+    handRaised: false,
   });
 
   // Stable refs so socket event handlers don't stale-close over state
@@ -223,9 +240,48 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    // When remote stream arrives
+    // When a remote stream arrives — the first stream per peer is the audio
+    // stream they joined with; any later stream is a screen share. A screen
+    // share is detected by the presence of at least one live video track.
     peer.on("stream", (remoteStream) => {
-      audioEl.srcObject = remoteStream;
+      const hasVideo = remoteStream.getVideoTracks().length > 0;
+      if (!hasVideo) {
+        audioEl.srcObject = remoteStream;
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        remoteScreenStreams: {
+          ...prev.remoteScreenStreams,
+          [remoteUserId]: remoteStream,
+        },
+        isScreenSharing: true,
+        activeScreenSharerId: prev.activeScreenSharerId ?? remoteUserId,
+      }));
+
+      const cleanup = () => {
+        setState((prev) => {
+          const { [remoteUserId]: _gone, ...rest } = prev.remoteScreenStreams;
+          const remainingIds = Object.keys(rest);
+          const stillSharing =
+            remainingIds.length > 0 || !!prev.localScreenStream;
+          return {
+            ...prev,
+            remoteScreenStreams: rest,
+            isScreenSharing: stillSharing,
+            activeScreenSharerId:
+              prev.activeScreenSharerId === remoteUserId
+                ? remainingIds[0] ??
+                  (prev.localScreenStream ? currentUser.id : null)
+                : prev.activeScreenSharerId,
+          };
+        });
+      };
+
+      remoteStream.getVideoTracks().forEach((t) => {
+        t.addEventListener("ended", cleanup);
+      });
     });
 
     peer.on("error", (err) => {
@@ -392,13 +448,14 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
   // ─── Public API: leaveHuddle ──────────────────────────────────────────────
 
   const leaveHuddle = () => {
-    const { roomId, localStream } = stateRef.current;
+    const { roomId, localStream, localScreenStream } = stateRef.current;
 
     // Notify server
     if (roomId) socket?.emit("huddle:leave", { roomId });
 
-    // Stop local tracks
+    // Stop local tracks (mic + screen share)
     localStream?.getTracks().forEach((t) => t.stop());
+    localScreenStream?.getTracks().forEach((t) => t.stop());
 
     // Destroy all peer connections
     destroyAllPeers();
@@ -413,6 +470,11 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       participants: [],
       localStream: null,
       muted: false,
+      handRaised: false,
+      localScreenStream: null,
+      remoteScreenStreams: {},
+      isScreenSharing: false,
+      activeScreenSharerId: null,
       activeRooms: prev.activeRooms.filter((id) => id !== roomId),
     }));
   };
@@ -441,9 +503,9 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     }));
   };
 
-  // ─── Public API: raiseHand ────────────────────────────────────────────────
+  // ─── Public API: toggleHand ───────────────────────────────────────────────
 
-  const raiseHand = () => {
+  const toggleHand = () => {
     const { roomId, participants } = stateRef.current;
     const me = participants.find((p) => p.id === currentUser.id);
     const raised = !me?.handRaised;
@@ -452,10 +514,77 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
 
     setState((prev) => ({
       ...prev,
+      handRaised: raised,
       participants: prev.participants.map((p) =>
         p.id === currentUser.id ? { ...p, handRaised: raised } : p
       ),
     }));
+  };
+  // Back-compat alias.
+  const raiseHand = toggleHand;
+
+  // ─── Public API: toggleScreenShare ────────────────────────────────────────
+
+  const toggleScreenShare = async () => {
+    const { localScreenStream } = stateRef.current;
+
+    // Stop sharing
+    if (localScreenStream) {
+      localScreenStream.getTracks().forEach((t) => t.stop());
+      for (const { peer } of peersRef.current.values()) {
+        try {
+          (peer as any).removeStream?.(localScreenStream);
+        } catch {}
+      }
+      setState((prev) => {
+        const remoteIds = Object.keys(prev.remoteScreenStreams);
+        return {
+          ...prev,
+          localScreenStream: null,
+          isScreenSharing: remoteIds.length > 0,
+          activeScreenSharerId:
+            prev.activeScreenSharerId === currentUser.id
+              ? remoteIds[0] ?? null
+              : prev.activeScreenSharerId,
+        };
+      });
+      return;
+    }
+
+    // Start sharing
+    try {
+      // Some older TS DOM libs don't know about getDisplayMedia — cast via any.
+      const stream: MediaStream = await (navigator.mediaDevices as any).getDisplayMedia(
+        { video: { cursor: "always" }, audio: false }
+      );
+
+      for (const { peer } of peersRef.current.values()) {
+        try {
+          (peer as any).addStream?.(stream);
+        } catch (err) {
+          console.warn("[Huddle] addStream failed:", err);
+        }
+      }
+
+      // The browser's "Stop sharing" control ends the track; listen for that
+      // so our state mirrors reality.
+      stream.getVideoTracks().forEach((t) => {
+        t.addEventListener("ended", () => {
+          // Re-enter to flip state + notify peers.
+          toggleScreenShare();
+        });
+      });
+
+      setState((prev) => ({
+        ...prev,
+        localScreenStream: stream,
+        isScreenSharing: true,
+        activeScreenSharerId: prev.activeScreenSharerId ?? currentUser.id,
+      }));
+    } catch (err) {
+      // Typical cause: user dismissed the picker. Silent is fine.
+      console.warn("[Huddle] screen share aborted:", err);
+    }
   };
 
   // ─── Public API: setInputDeviceId ─────────────────────────────────────────
@@ -521,8 +650,10 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     leaveHuddle,
     toggleMute,
     setInputDeviceId,
+    toggleHand,
     raiseHand,
     setOutputDeviceId,
+    toggleScreenShare,
   };
 
   return <CallContext.Provider value={value}>{children}</CallContext.Provider>;

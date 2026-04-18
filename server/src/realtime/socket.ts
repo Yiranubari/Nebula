@@ -41,13 +41,14 @@ export const initSocket = (httpServer: http.Server) => {
       const decoded = verifyAccessToken(token);
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
-        select: { id: true, name: true },
+        select: { id: true, name: true, role: true },
       });
 
       if (!user) return next(new Error("Authentication error: User not found"));
 
       socket.data.userId = user.id;
       socket.data.userName = user.name;
+      socket.data.role = user.role;
       next();
     } catch (err) {
       logger.error({ err }, "Socket authentication failed");

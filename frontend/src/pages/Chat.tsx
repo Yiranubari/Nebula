@@ -16,6 +16,9 @@ import {
   Pause,
   PhoneCall,
   Smile,
+  Search,
+  UserPlus,
+  UserMinus,
 } from "lucide-react";
 import Avatar from "../components/Avatar";
 import { Attachment } from "../types";
@@ -43,6 +46,7 @@ const Chat = () => {
     markTrackRead,
   } = useApp();
   const [manageMembers, setManageMembers] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -57,6 +61,14 @@ const Chat = () => {
   const [newTrackName, setNewTrackName] = useState("");
   const [creating, setCreating] = useState(false);
   const isAdmin = currentUser.role === "ADMIN";
+  /**
+   * Admins can send, react, pin, and record in any track even when they
+   * aren't explicitly on the member list. Members must be on the roster.
+   */
+  const activeTrackMembers =
+    tracks.find((t) => t.id === activeTrackId)?.members ?? [];
+  const isTrackMember = activeTrackMembers.includes(currentUser.id);
+  const canPost = isAdmin || isTrackMember;
   const [huddleOpen, setHuddleOpen] = useState(false);
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -343,10 +355,7 @@ const Chat = () => {
 
   const startRecording = async () => {
     if (isRecording) return;
-    const isMember = (
-      tracks.find((t) => t.id === activeTrackId)?.members || []
-    ).includes(currentUser.id);
-    if (!isMember) return;
+    if (!canPost) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
@@ -612,9 +621,9 @@ const Chat = () => {
   const hasPinnedForTrack = pinnedForTrack.length > 0;
   const primaryPinned = pinnedForTrack[0];
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen overflow-hidden bg-white dark:bg-dark">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen overflow-hidden bg-transparent">
       {renaming && currentUser.role === "ADMIN" && (
-        <div className="px-6 py-2 bg-slate-50 dark:bg-surface border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+        <div className="px-6 py-2 bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl border-b border-slate-200/60 dark:border-white/10 flex items-center gap-2">
           <input
             type="text"
             value={renameValue}
@@ -677,71 +686,173 @@ const Chat = () => {
           </button>
         </div>
       )}
-      {manageMembers && currentUser.role === "ADMIN" && (
-        <div className="px-6 py-3 bg-slate-50 dark:bg-surface border-b border-slate-200 dark:border-slate-700">
-          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
-            Track members
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {users.map((u) => {
-              const activeTrack = tracks.find((t) => t.id === activeTrackId);
-              const isMember = activeTrack?.members?.includes(u.id) ?? false;
-              return (
-                <label
-                  key={u.id}
-                  className="flex items-center gap-2 p-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-dark"
-                >
-                  <input
-                    type="checkbox"
-                    checked={isMember}
-                    onChange={(e) => {
-                      const fn = e.target.checked
-                        ? addMemberToTrack(activeTrackId, u.id)
-                        : removeMemberFromTrack(activeTrackId, u.id);
-                      fn.catch(() => {
-                        // interceptor already surfaced the error toast
-                      });
-                    }}
-                  />
-                  <Avatar
-                    src={u.avatar}
-                    name={u.name}
-                    size="sm"
-                    status={
-                      presence[u.id]?.inHuddleTrackId
-                        ? "in-huddle"
-                        : presence[u.id]?.status || "offline"
-                    }
-                    showStatusDot
-                  />
-                  <span className="text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+      {manageMembers && currentUser.role === "ADMIN" && (() => {
+        const activeTrack = tracks.find((t) => t.id === activeTrackId);
+        const memberIds = new Set(activeTrack?.members ?? []);
+        const query = memberSearch.trim().toLowerCase();
+        const matchesQuery = (u: typeof users[number]) =>
+          !query ||
+          u.name.toLowerCase().includes(query) ||
+          u.email.toLowerCase().includes(query);
+        const inTrack = users.filter((u) => memberIds.has(u.id) && matchesQuery(u));
+        const availableToAdd = users.filter(
+          (u) => !memberIds.has(u.id) && matchesQuery(u)
+        );
+
+        const handleAdd = (userId: string) =>
+          addMemberToTrack(activeTrackId, userId).catch(() => {});
+        const handleRemove = (userId: string) =>
+          removeMemberFromTrack(activeTrackId, userId).catch(() => {});
+
+        const renderRow = (
+          u: typeof users[number],
+          kind: "in" | "out"
+        ) => {
+          const presenceStatus = presence[u.id]?.inHuddleTrackId
+            ? ("in-huddle" as const)
+            : ((presence[u.id]?.status || "offline") as any);
+          const isSelf = u.id === currentUser.id;
+          return (
+            <div
+              key={u.id}
+              className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/60 dark:bg-white/[0.02] hover:border-indigo-500/30 transition-colors"
+            >
+              <Avatar
+                src={u.avatar}
+                name={u.name}
+                size="sm"
+                status={presenceStatus}
+                showStatusDot
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
                     {u.name}
-                    {presence[u.id]?.inHuddleTrackId && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-violet-50 text-violet-700 border border-violet-200">
-                        In huddle
+                    {isSelf && (
+                      <span className="ml-1.5 text-[10px] text-slate-400">
+                        (you)
                       </span>
                     )}
+                  </p>
+                  {u.role === "ADMIN" && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      Admin
+                    </span>
+                  )}
+                  {presence[u.id]?.inHuddleTrackId && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/30">
+                      In huddle
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  {u.email}
+                </p>
+              </div>
+              {kind === "in" ? (
+                <button
+                  onClick={() => handleRemove(u.id)}
+                  disabled={isSelf}
+                  className="px-2.5 py-1.5 text-xs rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-700 dark:text-red-300 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={isSelf ? "You can't remove yourself" : "Remove from track"}
+                >
+                  <UserMinus size={12} />
+                  Remove
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleAdd(u.id)}
+                  className="px-2.5 py-1.5 text-xs rounded-lg border border-indigo-200 dark:border-indigo-400/30 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 inline-flex items-center gap-1"
+                >
+                  <UserPlus size={12} />
+                  Add
+                </button>
+              )}
+            </div>
+          );
+        };
+
+        return (
+          <div className="px-6 py-4 bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl border-b border-slate-200/60 dark:border-white/10">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-100">
+                  Manage members
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {memberIds.size} member{memberIds.size === 1 ? "" : "s"} in
+                  #{activeTrack?.name}
+                </p>
+              </div>
+              <button
+                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5"
+                onClick={() => {
+                  setManageMembers(false);
+                  setMemberSearch("");
+                }}
+              >
+                Done
+              </button>
+            </div>
+
+            <div className="relative mb-3">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="text"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Search members by name or email"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-white/80 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    In this track · {inTrack.length}
                   </span>
-                  <span className="ml-auto text-xs text-slate-500 dark:text-slate-400 capitalize">
-                    {u.role.toLowerCase()}
+                </div>
+                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                  {inTrack.length === 0 ? (
+                    <p className="text-xs text-slate-400 px-3 py-3">
+                      {query ? "No matches." : "No members yet."}
+                    </p>
+                  ) : (
+                    inTrack.map((u) => renderRow(u, "in"))
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Available to add · {availableToAdd.length}
                   </span>
-                </label>
-              );
-            })}
+                </div>
+                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                  {availableToAdd.length === 0 ? (
+                    <p className="text-xs text-slate-400 px-3 py-3">
+                      {query
+                        ? "No matches."
+                        : "Everyone's already in this track."}
+                    </p>
+                  ) : (
+                    availableToAdd.map((u) => renderRow(u, "out"))
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="mt-2 flex justify-end">
-            <button
-              className="px-3 py-2 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-              onClick={() => setManageMembers(false)}
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
-      <div className="h-16 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-6 bg-white dark:bg-surface shrink-0">
+        );
+      })()}
+      <div className="h-16 border-b border-slate-100 dark:border-white/10 flex items-center justify-between px-6 bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-200 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-600 dark:text-indigo-200 border border-indigo-500/20 rounded-xl flex items-center justify-center shadow-sm">
             <Hash size={20} />
           </div>
           <div>
@@ -749,7 +860,7 @@ const Chat = () => {
               <select
                 value={activeTrackId}
                 onChange={(e) => setActiveTrackId(e.target.value)}
-                className="text-sm font-bold text-slate-800 dark:text-slate-100 bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1"
+                className="text-sm font-bold text-slate-800 dark:text-slate-100 bg-white/60 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 rounded-lg px-2 py-1 backdrop-blur-sm"
                 aria-label="Select chat track"
               >
                 {tracks.map((t) => (
@@ -773,17 +884,13 @@ const Chat = () => {
               <button
                 onClick={() => setHuddleOpen(true)}
                 className={`p-1 rounded border border-transparent ${
-                  (
-                    tracks.find((t) => t.id === activeTrackId)?.members || []
-                  ).includes(currentUser.id)
+                  canPost
                     ? "text-indigo-600 hover:text-indigo-700 hover:border-indigo-200"
                     : "text-slate-400 cursor-not-allowed"
                 }`}
                 title="Open huddle for this track"
                 disabled={
-                  !(
-                    tracks.find((t) => t.id === activeTrackId)?.members || []
-                  ).includes(currentUser.id)
+                  !canPost
                 }
               >
                 <PhoneCall size={18} />
@@ -864,13 +971,13 @@ const Chat = () => {
       </div>
 
       {creating && currentUser.role === "ADMIN" && (
-        <div className="px-6 py-2 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2">
+        <div className="px-6 py-2 bg-indigo-50/80 dark:bg-indigo-500/10 backdrop-blur-xl border-b border-indigo-100 dark:border-indigo-400/20 flex items-center gap-2">
           <input
             type="text"
             value={newTrackName}
             onChange={(e) => setNewTrackName(e.target.value)}
             placeholder="New track name (e.g., design, backend)"
-            className="px-3 py-2 rounded border border-indigo-200 bg-white text-sm flex-1"
+            className="px-3 py-2 rounded border border-indigo-200 dark:border-indigo-400/30 bg-white dark:bg-white/5 text-sm flex-1 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
           <button
             className="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700"
@@ -1576,9 +1683,7 @@ const Chat = () => {
             onChange={(e) => {
               setInputText(e.target.value);
               if (
-                (
-                  tracks.find((t) => t.id === activeTrackId)?.members || []
-                ).includes(currentUser.id)
+                canPost
               ) {
                 setTyping(activeTrackId, currentUser.id, true);
                 if (typingTimeoutRef.current)
@@ -1595,9 +1700,7 @@ const Chat = () => {
             }...`}
             className="w-full pl-4 pr-24 py-3 bg-slate-100 dark:bg-dark border-none rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-dark transition-all outline-none text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             disabled={
-              !(
-                tracks.find((t) => t.id === activeTrackId)?.members || []
-              ).includes(currentUser.id)
+              !canPost
             }
             onBlur={() => {
               setTyping(activeTrackId, currentUser.id, false);
@@ -1671,9 +1774,7 @@ const Chat = () => {
               onClick={() => (isRecording ? stopRecording() : startRecording())}
               title={isRecording ? "Stop recording" : "Start recording"}
               disabled={
-                !(
-                  tracks.find((t) => t.id === activeTrackId)?.members || []
-                ).includes(currentUser.id)
+                !canPost
               }
             >
               {isRecording ? <Square size={18} /> : <Mic size={18} />}
@@ -1715,9 +1816,7 @@ const Chat = () => {
             type="submit"
             disabled={
               (!inputText.trim() && pendingFiles.length === 0) ||
-              !(
-                tracks.find((t) => t.id === activeTrackId)?.members || []
-              ).includes(currentUser.id)
+              !canPost
             }
             className="absolute right-2 top-2 p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:hover:bg-indigo-600"
           >
@@ -1748,11 +1847,9 @@ const Chat = () => {
             typing…
           </p>
         )}
-        {!(tracks.find((t) => t.id === activeTrackId)?.members || []).includes(
-          currentUser.id
-        ) && (
+        {!canPost && (
           <p className="text-center text-xs text-slate-500 mt-2">
-            You’re not a member of this track. Ask an admin to add you.
+            You're not a member of this track. Ask an admin to add you.
           </p>
         )}
       </div>

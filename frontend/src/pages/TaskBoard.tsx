@@ -120,23 +120,28 @@ const TaskBoard = () => {
     <>
       <div className="p-4 md:p-8 min-h-[calc(100vh-3.5rem)] md:min-h-screen overflow-hidden flex flex-col">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-            Task Board
-          </h1>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-brand">
+              Task Board
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Drag, filter, and ship — your team's work at a glance.
+            </p>
+          </div>
           <div className="flex-1 md:flex md:items-center md:justify-end">
             <div className="flex flex-wrap gap-2 items-center">
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tasks..."
-                className="px-3 py-2 bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm w-full sm:w-56 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="px-3 py-2 bg-white/80 dark:bg-white/5 backdrop-blur-sm border border-slate-200/70 dark:border-white/10 rounded-lg text-sm w-full sm:w-56 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               <select
                 value={filterStatus}
                 onChange={(e) =>
                   setFilterStatus(e.target.value as any as "ALL" | TaskStatus)
                 }
-                className="px-3 py-2 bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
+                className="px-3 py-2 bg-white/80 dark:bg-white/5 backdrop-blur-sm border border-slate-200/70 dark:border-white/10 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
               >
                 <option value="ALL">All Statuses</option>
                 {Object.values(TaskStatus).map((s) => (
@@ -148,7 +153,7 @@ const TaskBoard = () => {
               <select
                 value={filterAssignee}
                 onChange={(e) => setFilterAssignee(e.target.value)}
-                className="px-3 py-2 bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
+                className="px-3 py-2 bg-white/80 dark:bg-white/5 backdrop-blur-sm border border-slate-200/70 dark:border-white/10 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
               >
                 <option value="ALL">All Assignees</option>
                 {users.map((u) => (
@@ -162,7 +167,7 @@ const TaskBoard = () => {
                 onChange={(e) =>
                   setFilterPriority(e.target.value as any as "ALL" | Priority)
                 }
-                className="px-3 py-2 bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
+                className="px-3 py-2 bg-white/80 dark:bg-white/5 backdrop-blur-sm border border-slate-200/70 dark:border-white/10 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
               >
                 <option value="ALL">All Priorities</option>
                 {Object.values(Priority).map((p) => (
@@ -181,7 +186,7 @@ const TaskBoard = () => {
                       | "estimatedHours"
                   )
                 }
-                className="px-3 py-2 bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
+                className="px-3 py-2 bg-white/80 dark:bg-white/5 backdrop-blur-sm border border-slate-200/70 dark:border-white/10 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
               >
                 <option value="createdAt">Sort: Created</option>
                 <option value="priority">Sort: Priority</option>
@@ -192,7 +197,7 @@ const TaskBoard = () => {
                 onChange={(e) =>
                   setSortOrder(e.target.value as any as "asc" | "desc")
                 }
-                className="px-3 py-2 bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
+                className="px-3 py-2 bg-white/80 dark:bg-white/5 backdrop-blur-sm border border-slate-200/70 dark:border-white/10 rounded-lg text-sm w-full sm:w-auto text-slate-900 dark:text-slate-100"
               >
                 <option value="desc">Desc</option>
                 <option value="asc">Asc</option>
@@ -203,8 +208,9 @@ const TaskBoard = () => {
 
         {currentUser.role === "ADMIN" &&
           notifications.filter((n) => n.status === "PENDING").length > 0 && (
-            <div className="mb-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg p-4">
-              <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2">
+            <div className="mb-4 bg-amber-50/80 dark:bg-amber-500/10 backdrop-blur-sm border border-amber-200/70 dark:border-amber-500/30 rounded-2xl p-4">
+              <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                 Pending approvals
               </h2>
               <div className="space-y-2">
@@ -260,15 +266,15 @@ const TaskBoard = () => {
           ).map((col) => (
             <div
               key={col.id}
-              className="min-w-[260px] sm:min-w-[280px] md:min-w-[320px] max-w-[320px] flex flex-col h-full bg-slate-50 dark:bg-surface rounded-xl border border-slate-200 dark:border-slate-700"
+              className="min-w-[260px] sm:min-w-[280px] md:min-w-[320px] max-w-[320px] flex flex-col h-full glass-panel rounded-2xl"
             >
-              <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-slate-50 dark:bg-surface rounded-t-xl z-10">
+              <div className="p-4 border-b border-slate-200/60 dark:border-white/10 flex justify-between items-center sticky top-0 backdrop-blur-xl rounded-t-2xl z-10 bg-white/40 dark:bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${col.color}`} />
-                  <h3 className="font-semibold text-slate-700 dark:text-slate-200">
+                  <h3 className="font-semibold text-slate-700 dark:text-slate-200 tracking-tight">
                     {col.title}
                   </h3>
-                  <span className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-200 text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-slate-200/60 dark:bg-white/10 text-slate-600 dark:text-slate-200 text-xs px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/10">
                     {tasks.filter((t) => t.status === col.id).length}
                   </span>
                 </div>
@@ -289,7 +295,7 @@ const TaskBoard = () => {
                     return (
                       <div
                         key={task.id}
-                        className="bg-white dark:bg-dark p-4 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow group relative"
+                        className="bg-white/90 dark:bg-white/[0.03] p-4 rounded-xl shadow-sm border border-slate-100 dark:border-white/10 hover:border-indigo-500/30 dark:hover:border-indigo-400/30 hover:shadow-md transition-all group relative backdrop-blur-sm"
                         onClick={() => setMenuOpenId(null)}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -349,7 +355,7 @@ const TaskBoard = () => {
                             </div>
                           )}
 
-                        <h4 className="font-semibold text-slate-800 mb-1 leading-tight">
+                        <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-1 leading-tight">
                           {task.title}
                         </h4>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">
@@ -454,7 +460,7 @@ const TaskBoard = () => {
                   })}
 
                 {tasks.filter((t) => t.status === col.id).length === 0 && (
-                  <div className="h-24 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs px-3 text-center">
+                  <div className="h-24 border-2 border-dashed border-slate-200/70 dark:border-white/10 rounded-xl flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs px-3 text-center">
                     <span className="font-medium text-slate-500 dark:text-slate-400">
                       Nothing here yet
                     </span>
@@ -487,7 +493,7 @@ const TaskBoard = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => setConfirmTask(null)}
           />
-          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+          <div className="relative bg-white dark:bg-[#0f172a] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 w-[90%] max-w-md p-5 z-50">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
               Delete task?
             </h3>
@@ -544,7 +550,7 @@ const TaskBoard = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => setEditTask(null)}
           />
-          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[95%] max-w-lg p-5 z-50">
+          <div className="relative bg-white dark:bg-[#0f172a] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 w-[95%] max-w-lg p-5 z-50">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-3">
               Edit Task
             </h3>
@@ -716,7 +722,7 @@ const TaskBoard = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => setConfirmSubmitTaskId(null)}
           />
-          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+          <div className="relative bg-white dark:bg-[#0f172a] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 w-[90%] max-w-md p-5 z-50">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
               Submit for approval?
             </h3>
@@ -757,7 +763,7 @@ const TaskBoard = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => setConfirmApproveTaskId(null)}
           />
-          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+          <div className="relative bg-white dark:bg-[#0f172a] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 w-[90%] max-w-md p-5 z-50">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
               Approve this task?
             </h3>

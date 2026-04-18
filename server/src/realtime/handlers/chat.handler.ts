@@ -17,7 +17,17 @@ const emitError = (socket: NebSocket, message: string) => {
   socket.emit("error" as any, { message });
 };
 
-const isTrackMember = async (trackId: string, userId: string) => {
+/**
+ * True if the user can interact with this track. Admins always pass — they
+ * can send, react, pin, and read-mark messages in any workspace channel
+ * without explicit membership.
+ */
+const canAccessTrack = async (
+  trackId: string,
+  userId: string,
+  role: "ADMIN" | "MEMBER"
+) => {
+  if (role === "ADMIN") return true;
   const member = await prisma.trackMember.findUnique({
     where: { trackId_userId: { trackId, userId } },
   });
@@ -26,6 +36,7 @@ const isTrackMember = async (trackId: string, userId: string) => {
 
 export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   const userId = socket.data.userId;
+  const role = socket.data.role;
 
   // ─── Send message ────────────────────────────────────────────────────────────
   socket.on("message:send", async (payload) => {
@@ -43,7 +54,7 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
         return;
       }
 
-      if (!(await isTrackMember(trackId, userId))) {
+      if (!(await canAccessTrack(trackId, userId, role))) {
         emitError(socket, "Not a track member");
         return;
       }
@@ -79,7 +90,7 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
       });
       if (!message) return;
 
-      if (!(await isTrackMember(message.trackId, userId))) {
+      if (!(await canAccessTrack(message.trackId, userId, role))) {
         emitError(socket, "Not a member of this track");
         return;
       }
@@ -118,7 +129,7 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
       });
       if (!message) return;
 
-      if (!(await isTrackMember(message.trackId, userId))) {
+      if (!(await canAccessTrack(message.trackId, userId, role))) {
         emitError(socket, "Not a member of this track");
         return;
       }
@@ -147,18 +158,13 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
       });
       if (!message) return;
 
-      if (!(await isTrackMember(message.trackId, userId))) {
+      if (!(await canAccessTrack(message.trackId, userId, role))) {
         emitError(socket, "Not a member of this track");
         return;
       }
 
       // Only the author or an admin can pin/unpin
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { role: true },
-      });
-      const isAdmin = user?.role === "ADMIN";
-      if (!isAdmin && message.userId !== userId) {
+      if (role !== "ADMIN" && message.userId !== userId) {
         emitError(socket, "Only admins or the author can pin this message");
         return;
       }

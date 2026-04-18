@@ -4,7 +4,7 @@ import { UsersService } from "./users.service";
 import { prisma } from "../../db/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { validate } from "../../middleware/validate.middleware";
-import { updateProfileSchema } from "./users.schemas";
+import { updateProfileSchema, updateRoleSchema } from "./users.schemas";
 import { protect } from "../auth/auth.middleware";
 
 const router = Router();
@@ -25,5 +25,10 @@ router.patch(
 router.get("/", asyncHandler(usersController.getAllUsers));
 router.get("/:id", asyncHandler(usersController.getUser));
 router.delete("/:id", asyncHandler(usersController.deleteUser));
+router.patch(
+  "/:id/role",
+  validate(updateRoleSchema, "body"),
+  asyncHandler(usersController.updateRole)
+);
 
 export default router;

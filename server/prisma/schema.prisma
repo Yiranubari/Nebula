@@ -58,6 +58,7 @@ model User {
   isVerified   Boolean   @default(false) @map("is_verified")
   otp          String?
   otpExpiresAt DateTime? @map("otp_expires_at")
+  invitedById  String?   @map("invited_by_id")
 
   assignedTasks         Task[]          @relation("AssignedTasks")
   messages              Message[]
@@ -67,6 +68,8 @@ model User {
   refreshTokens         RefreshToken[]
   sentNotifications     Notification[]  @relation("RequesterNotifications")
   receivedNotifications Notification[]  @relation("RecipientNotifications")
+  invitedBy             User?           @relation("UserInvites", fields: [invitedById], references: [id], onDelete: SetNull)
+  invitedUsers          User[]          @relation("UserInvites")
 
   @@map("users")
 }
@@ -103,6 +106,7 @@ model Task {
 model Track {
   id        String   @id @default(cuid())
   name      String
+  isDefault Boolean  @default(false) @map("is_default")
   createdAt DateTime @default(now()) @map("created_at")
 
   members  TrackMember[]

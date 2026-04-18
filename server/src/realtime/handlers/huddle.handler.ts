@@ -8,6 +8,7 @@ import {
 } from "@nebula/shared";
 import { logger } from "../../config/logger";
 import { getIO } from "../socket";
+import { setInHuddle } from "../presenceStore";
 
 type NebServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type NebSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -32,7 +33,9 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
     socket.join(`huddle:${roomId}`);
 
     if (!huddleRooms.has(roomId)) huddleRooms.set(roomId, new Map());
-    huddleRooms.get(roomId)!.set(userId, {
+    const room = huddleRooms.get(roomId)!;
+    const alreadyInRoom = room.has(userId);
+    room.set(userId, {
       userId,
       muted: false,
       handRaised: false,
@@ -51,11 +54,17 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
       participants,
     });
 
-    logger.info(`${userId} joined huddle ${roomId}`);
+    // Tell the whole workspace this user is now in a huddle so non-participants
+    // can surface "in huddle" badges + light up the track as active.
+    if (!alreadyInRoom) {
+      setInHuddle(getIO(), userId, roomId);
+      logger.info(`${userId} joined huddle ${roomId}`);
+    }
   });
 
   // ─── Leave huddle room ───────────────────────────────────────────────────────
   const leaveHuddle = (roomId: string) => {
+    const wasInRoom = huddleRooms.get(roomId)?.has(userId) ?? false;
     huddleRooms.get(roomId)?.delete(userId);
     if (huddleRooms.get(roomId)?.size === 0) huddleRooms.delete(roomId);
 
@@ -67,6 +76,11 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
       userId,
       participants,
     });
+
+    if (wasInRoom) {
+      // Clear the huddle pin so the workspace-wide badges drop.
+      setInHuddle(getIO(), userId, null);
+    }
   };
 
   socket.on("huddle:leave", ({ roomId }) => {

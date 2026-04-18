@@ -50,6 +50,11 @@ export interface ServerToClientEvents {
     info: PresenceInfo;
   }) => void;
 
+  /** Initial full presence snapshot sent to a socket when it connects. */
+  "presence:snapshot": (payload: {
+    presence: Record<string, PresenceInfo>;
+  }) => void;
+
   // Typing
   "typing:update": (payload: {
     trackId?: string;
@@ -86,4 +91,5 @@ export interface InterServerEvents {
 export interface SocketData {
   userId: string;
   userName: string;
+  role: "ADMIN" | "MEMBER";
 }

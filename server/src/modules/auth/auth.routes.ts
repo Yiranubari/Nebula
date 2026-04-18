@@ -4,15 +4,18 @@ import { AuthService } from "./auth.service";
 import { prisma } from "../../db/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { validate } from "../../middleware/validate.middleware";
-import { 
-  registerSchema, 
+import {
+  registerSchema,
   loginSchema,
   verifyOtpSchema,
   resendOtpSchema,
   forgotPasswordSchema,
-  resetPasswordSchema
+  resetPasswordSchema,
+  inviteSchema,
+  completeInviteSchema,
 } from "./auth.schemas";
 import { strictRateLimiter } from "../../middleware/rateLimit.middleware";
+import { protect } from "./auth.middleware";
 
 const router = Router();
 
@@ -64,5 +67,20 @@ router.post(
 router.post("/refresh", asyncHandler(authController.refresh));
 
 router.post("/logout", asyncHandler(authController.logout));
+
+router.post(
+  "/invite",
+  protect,
+  strictRateLimiter,
+  validate(inviteSchema),
+  asyncHandler(authController.invite)
+);
+
+router.post(
+  "/complete-invite",
+  strictRateLimiter,
+  validate(completeInviteSchema),
+  asyncHandler(authController.completeInvite)
+);
 
 export default router;

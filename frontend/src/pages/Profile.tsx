@@ -90,15 +90,15 @@ const Profile = () => {
 
   return (
     <div className="p-6 md:p-8 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-200">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <UserCircle size={24} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+          <h1 className="text-3xl font-extrabold tracking-tight text-brand">
             {isSelf ? "My Profile" : `${viewUser.name}'s Profile`}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {isSelf
               ? "Update your personal information and photo."
               : "View member details."}
@@ -106,7 +106,7 @@ const Profile = () => {
         </div>
       </div>
 
-      <div className="mt-6 bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+      <div className="mt-6 glass-panel p-6 rounded-2xl shadow-sm">
         {isSelf ? (
           <div className="flex items-center gap-4">
             <Avatar

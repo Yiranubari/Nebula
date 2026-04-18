@@ -38,10 +38,12 @@ const Landing = () => {
 
       {/* Header */}
       <header className="relative z-10 container mx-auto px-6 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/30 border border-white/10 group">
-            <span className="group-hover:scale-110 transition-transform duration-300">N</span>
-          </div>
+        <div className="flex items-center gap-2 group">
+          <img
+            src="/logo.svg"
+            alt="Nebula"
+            className="w-10 h-10 drop-shadow-[0_0_14px_rgba(168,85,247,0.5)] group-hover:scale-105 transition-transform duration-300"
+          />
           <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">Nebula</span>
         </div>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
@@ -58,7 +60,7 @@ const Landing = () => {
             to="/signup"
             className="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/10 rounded-full backdrop-blur-md transition-all hover:scale-105 active:scale-95"
           >
-            Get Started
+            Sign Up
           </Link>
         </div>
       </header>
@@ -183,7 +185,7 @@ const Landing = () => {
           {[
             { icon: Kanban, title: "Intuitive Boards", desc: "Drag, drop, and manage tasks with zero friction. Custom workflows that adapt to your team.", color: "text-indigo-400", bg: "bg-indigo-500/10" },
             { icon: MessageSquare, title: "Realtime Chat", desc: "Built-in messaging right next to your work. Never switch contexts to ask a quick question.", color: "text-purple-400", bg: "bg-purple-500/10" },
-            { icon: Zap, title: "Lightning Fast", desc: "Engineered for speed. Instant updates, optimistic UI, and zero loading spinners.", color: "text-amber-400", bg: "bg-amber-500/10" },
+            { icon: Zap, title: "Lightning Fast", desc: "Engineered for speed. Instant updates and optimistic UI.", color: "text-amber-400", bg: "bg-amber-500/10" },
             { icon: Layers, title: "Powerful Sorting", desc: "Find exactly what you need with advanced filtering, labels, and smart search.", color: "text-pink-400", bg: "bg-pink-500/10" },
             { icon: ShieldCheck, title: "Granular Access", desc: "Enterprise-grade security and permissions to keep your data safe and sound.", color: "text-emerald-400", bg: "bg-emerald-500/10" },
             { icon: Rocket, title: "Instant Setup", desc: "Go from signup to your first productive workflow in under 60 seconds.", color: "text-rose-400", bg: "bg-rose-500/10" },
@@ -231,9 +233,11 @@ const Landing = () => {
       <footer className="relative z-10 border-t border-white/5 py-12 px-6 bg-slate-950">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/30">
-               N
-             </div>
+             <img
+               src="/logo.svg"
+               alt="Nebula"
+               className="w-8 h-8 drop-shadow-[0_0_10px_rgba(168,85,247,0.4)]"
+             />
              <span className="text-lg font-semibold text-white/90">Nebula</span>
           </div>
           <p className="text-sm text-slate-500 font-light">

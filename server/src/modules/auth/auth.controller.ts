@@ -68,6 +68,25 @@ export class AuthController extends BaseController {
     this.ok(res, { message: "Logged out successfully" });
   };
 
+  invite = async (req: Request, res: Response) => {
+    const result = await this.authService.invite(
+      {
+        id: req.user!.id,
+        role: req.user!.role,
+        name: req.user!.name,
+      },
+      req.body
+    );
+    this.created(res, result);
+  };
+
+  completeInvite = async (req: Request, res: Response) => {
+    const { user, accessToken, refreshToken, message } =
+      await this.authService.completeInvite(req.body);
+    this.setRefreshTokenCookie(res, refreshToken);
+    this.ok(res, { message, user, accessToken });
+  };
+
   private setRefreshTokenCookie(res: Response, token: string) {
     res.cookie("refreshToken", token, {
       httpOnly: true,

@@ -1,11 +1,30 @@
+import { randomBytes } from "node:crypto";
 import { BaseService } from "../../core/BaseService";
-import { RegisterDto, LoginDto, VerifyOtpDto, ResendOtpDto, ForgotPasswordDto, ResetPasswordDto } from "./auth.schemas";
+import {
+  RegisterDto,
+  LoginDto,
+  VerifyOtpDto,
+  ResendOtpDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  InviteDto,
+  CompleteInviteDto,
+} from "./auth.schemas";
 import { AppError } from "../../utils/AppError";
 import { hashPassword, comparePassword } from "../../utils/password";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../utils/jwt";
 import { sendMail } from "../../utils/mailer";
+import {
+  verifyOtpEmail,
+  resendOtpEmail,
+  passwordResetEmail,
+  inviteEmail,
+} from "../../utils/emailTemplates";
 import { audit } from "../../utils/audit";
+import { env } from "../../config/env";
 import type { User } from "@prisma/client";
+
+type Role = "ADMIN" | "MEMBER";
 
 export class AuthService extends BaseService {
   async register(data: RegisterDto) {
@@ -20,21 +39,27 @@ export class AuthService extends BaseService {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
+    // Bootstrap rule: the very first user to register on a fresh deployment
+    // becomes ADMIN so there's always someone who can manage the workspace.
+    // Every subsequent account is MEMBER — admins grow the team by promoting
+    // specific users from the Admin Operations page.
+    const userCount = await this.prisma.user.count();
+    const role: "ADMIN" | "MEMBER" = userCount === 0 ? "ADMIN" : "MEMBER";
+
     const user = await this.prisma.user.create({
       data: {
         name: data.name,
         email: data.email,
         passwordHash,
+        role,
+        avatar: data.avatar || null,
         otp,
         otpExpiresAt,
       },
     });
 
-    await sendMail(
-      user.email,
-      "Verify your Nebula account",
-      `Your verification code is: ${otp}\n\nIt will expire in 15 minutes.`
-    );
+    const { subject, text, html } = verifyOtpEmail(otp);
+    await sendMail(user.email, subject, text, html);
 
     audit("auth.register", { actorId: user.id });
     return { message: "Account created successfully. Please check your email for the verification code.", user: this.sanitizeUser(user) };
@@ -66,6 +91,10 @@ export class AuthService extends BaseService {
       },
     });
 
+    // Auto-join every track marked as default (e.g. #general) so new users
+    // land inside a live conversation instead of an empty workspace.
+    await this.joinDefaultTracks(verifiedUser.id);
+
     const tokens = this.generateTokens(verifiedUser.id, verifiedUser.role);
     await this.storeRefreshToken(verifiedUser.id, tokens.refreshToken);
 
@@ -94,11 +123,8 @@ export class AuthService extends BaseService {
       data: { otp, otpExpiresAt },
     });
 
-    await sendMail(
-      user.email,
-      "Your new Nebula verification code",
-      `Your new verification code is: ${otp}\n\nIt will expire in 15 minutes.`
-    );
+    const { subject, text, html } = resendOtpEmail(otp);
+    await sendMail(user.email, subject, text, html);
 
     return { message: "OTP resent successfully to your email." };
   }
@@ -144,11 +170,8 @@ export class AuthService extends BaseService {
       data: { otp, otpExpiresAt },
     });
 
-    await sendMail(
-      user.email,
-      "Reset your Nebula password",
-      `Your password reset code is: ${otp}\n\nIt will expire in 15 minutes.`
-    );
+    const { subject, text, html } = passwordResetEmail(otp);
+    await sendMail(user.email, subject, text, html);
 
     return { message: "If an account with that email exists, a password reset OTP has been sent." };
   }
@@ -259,5 +282,148 @@ export class AuthService extends BaseService {
   private sanitizeUser(user: User) {
     const { passwordHash: _1, otp: _2, otpExpiresAt: _3, ...rest } = user;
     return rest;
+  }
+
+  // ─── Invite flow ───────────────────────────────────────────────────────────
+
+  /**
+   * An admin invites someone by email. If no user with that email exists we
+   * pre-create a pending account (isVerified: false) with a throwaway password
+   * hash. If a pending invite already exists for this email we just refresh
+   * the OTP and resend the email — idempotent from the admin's point of view.
+   */
+  async invite(actor: { id: string; role: Role; name: string }, data: InviteDto) {
+    if (actor.role !== "ADMIN") {
+      throw new AppError(403, "Only admins can invite members");
+    }
+
+    const existing = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existing && existing.isVerified) {
+      throw new AppError(
+        400,
+        "That email already belongs to a verified member."
+      );
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    let invitee: User;
+    if (existing) {
+      // Refresh the OTP on the pending invite.
+      invitee = await this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          otp,
+          otpExpiresAt,
+          invitedById: actor.id,
+        },
+      });
+    } else {
+      // Throwaway password hash — the invitee sets their real password via
+      // complete-invite. passwordHash stays non-null so we don't have to
+      // relax the schema.
+      const placeholder = await hashPassword(
+        randomBytes(32).toString("base64url")
+      );
+      invitee = await this.prisma.user.create({
+        data: {
+          // Temporary display name — invitee overwrites this on completion.
+          name: data.email.split("@")[0],
+          email: data.email,
+          passwordHash: placeholder,
+          role: "MEMBER",
+          isVerified: false,
+          otp,
+          otpExpiresAt,
+          invitedById: actor.id,
+        },
+      });
+    }
+
+    const completeUrl = `${env.CLIENT_URL}/#/signup?invite=${encodeURIComponent(
+      data.email
+    )}`;
+    const { subject, text, html } = inviteEmail({
+      otp,
+      inviterName: actor.name,
+      completeUrl,
+    });
+    await sendMail(invitee.email, subject, text, html);
+
+    audit("user.invite", { actorId: actor.id, targetId: invitee.id });
+
+    return { message: "Invitation sent", user: this.sanitizeUser(invitee) };
+  }
+
+  /**
+   * Invitee sets their real name + password + OTP to activate the account.
+   */
+  async completeInvite(data: CompleteInviteDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (!user) {
+      throw new AppError(400, "Invalid invitation or OTP");
+    }
+    if (user.isVerified) {
+      throw new AppError(
+        400,
+        "This account is already active. Try signing in instead."
+      );
+    }
+    if (
+      user.otp !== data.otp ||
+      !user.otpExpiresAt ||
+      user.otpExpiresAt < new Date()
+    ) {
+      throw new AppError(400, "Invalid or expired OTP");
+    }
+
+    const passwordHash = await hashPassword(data.password);
+
+    const verified = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name: data.name,
+        passwordHash,
+        isVerified: true,
+        otp: null,
+        otpExpiresAt: null,
+      },
+    });
+
+    await this.joinDefaultTracks(verified.id);
+
+    const tokens = this.generateTokens(verified.id, verified.role);
+    await this.storeRefreshToken(verified.id, tokens.refreshToken);
+
+    audit("auth.verify_otp", { actorId: verified.id });
+
+    return {
+      message: "Welcome to Nebula!",
+      user: this.sanitizeUser(verified),
+      ...tokens,
+    };
+  }
+
+  /**
+   * Add a user to every track marked `isDefault`. Safe to call for users who
+   * are already members of some or all default tracks (uses skipDuplicates).
+   */
+  private async joinDefaultTracks(userId: string) {
+    const defaults = await this.prisma.track.findMany({
+      where: { isDefault: true },
+      select: { id: true },
+    });
+    if (defaults.length === 0) return;
+
+    await this.prisma.trackMember.createMany({
+      data: defaults.map((t) => ({ trackId: t.id, userId })),
+      skipDuplicates: true,
+    });
   }
 }

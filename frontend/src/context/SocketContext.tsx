@@ -1,12 +1,12 @@
 /**
  * SocketContext — provides a single authenticated Socket.IO connection for the
- * entire app. All other contexts (CallContext, etc.) import `useSocket()`.
- *
- * The socket is created lazily on first auth and destroyed on logout.
+ * entire app. All other contexts (AppContext, CallContext, …) import
+ * `useSocket()`.
  */
 
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -25,6 +25,8 @@ interface SocketContextValue {
   socket: NebSocket | null;
   isConnected: boolean;
   isReconnecting: boolean;
+  /** True once we've attempted (or completed) at least one connection in this session. */
+  hasAttempted: boolean;
   connect: (token: string) => void;
   disconnect: () => void;
 }
@@ -41,19 +43,41 @@ export const SocketProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  // Live socket lives in a ref so connect/disconnect are stable across renders
+  // and don't see stale state. A mirrored state value lets consumers re-render
+  // when the socket is replaced.
+  const socketRef = useRef<NebSocket | null>(null);
   const [socket, setSocket] = useState<NebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  // Track whether a reconnect attempt is in flight so we can show a distinct UI
   const [isReconnecting, setIsReconnecting] = useState(false);
-  // First-connect suppression — don't toast "disconnected" before ever connecting
+  const [hasAttempted, setHasAttempted] = useState(false);
   const hasConnectedOnceRef = useRef(false);
 
-  const connect = (token: string) => {
-    // Prevent double-connections
-    if (socket?.connected) return;
+  const teardown = useCallback(() => {
+    const s = socketRef.current;
+    if (s) {
+      s.removeAllListeners();
+      s.disconnect();
+    }
+    socketRef.current = null;
+  }, []);
 
-    // Tear down any previous stale socket
-    socket?.disconnect();
+  const connect = useCallback((token: string) => {
+    // If we already have a socket (connected OR mid-handshake) with this same
+    // token, keep it. This is important in React StrictMode dev, where the
+    // useEffect in SocketConnector runs twice on mount — without this guard
+    // we'd tear down the first socket before its WebSocket handshake
+    // completes, producing the "closed before connection established" error
+    // in the browser console.
+    const current = socketRef.current;
+    if (current) {
+      const currentToken = (current as any)?.auth?.token;
+      if (currentToken === token) return;
+    }
+
+    // Replace any stale socket (e.g., the token just changed after login).
+    teardown();
+    setHasAttempted(true);
 
     const s = io(SOCKET_URL, {
       auth: { token },
@@ -72,38 +96,48 @@ export const SocketProvider = ({
     });
     s.on("disconnect", (reason) => {
       setIsConnected(false);
-      // "io client disconnect" is an intentional teardown — don't warn
+      // "io client disconnect" is an intentional teardown — don't warn.
       if (reason !== "io client disconnect" && hasConnectedOnceRef.current) {
         setIsReconnecting(true);
         toast.error("Connection lost. Reconnecting…");
       }
     });
     s.on("connect_error", (err) => {
+      // Surface once to the console; the banner handles user-facing feedback.
+      // eslint-disable-next-line no-console
       console.warn("[Socket] connection error:", err.message);
     });
 
+    socketRef.current = s;
     setSocket(s);
-  };
+  }, [teardown]);
 
-  const disconnect = () => {
-    socket?.disconnect();
+  const disconnect = useCallback(() => {
+    teardown();
     setSocket(null);
     setIsConnected(false);
     setIsReconnecting(false);
+    setHasAttempted(false);
     hasConnectedOnceRef.current = false;
-  };
+  }, [teardown]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount of the provider
   useEffect(() => {
     return () => {
-      socket?.disconnect();
+      teardown();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [teardown]);
 
   return (
     <SocketContext.Provider
-      value={{ socket, isConnected, isReconnecting, connect, disconnect }}
+      value={{
+        socket,
+        isConnected,
+        isReconnecting,
+        hasAttempted,
+        connect,
+        disconnect,
+      }}
     >
       {children}
     </SocketContext.Provider>

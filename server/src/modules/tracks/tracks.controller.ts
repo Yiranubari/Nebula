@@ -20,7 +20,8 @@ export class TracksController extends BaseController {
   getTrack = async (req: Request, res: Response) => {
     const track = await this.tracksService.getTrackById(
       req.params.id as string,
-      req.user!.id
+      req.user!.id,
+      req.user!.role
     );
     this.ok(res, track);
   };
@@ -29,6 +30,7 @@ export class TracksController extends BaseController {
     const member = await this.tracksService.addMember(
       req.params.id as string,
       req.user!.id,
+      req.user!.role,
       req.body.userId
     );
     this.created(res, member);
@@ -38,6 +40,7 @@ export class TracksController extends BaseController {
     await this.tracksService.removeMember(
       req.params.id as string,
       req.user!.id,
+      req.user!.role,
       req.params.userId as string
     );
     this.noContent(res);

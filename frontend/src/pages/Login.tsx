@@ -191,13 +191,18 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-dark">
-      <div className="bg-white dark:bg-surface w-[90%] max-w-md rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-200 rounded-lg">
+    <div className="dark min-h-screen relative flex items-center justify-center bg-slate-900 overflow-hidden">
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-15%] left-[-10%] w-[45%] h-[45%] rounded-full bg-indigo-600/30 blur-[120px]" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[150px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
+      </div>
+      <div className="relative z-10 bg-white/5 backdrop-blur-xl w-[90%] max-w-md rounded-2xl shadow-2xl border border-white/10 p-6 text-white">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 border border-white/10">
             <LogIn size={20} />
           </div>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+          <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
             {mode === "login"
               ? "Sign in to Nebula"
               : mode === "forgot"

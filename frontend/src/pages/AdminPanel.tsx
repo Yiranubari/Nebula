@@ -1,13 +1,28 @@
-import React, { useState } from "react";
-import toast from "react-hot-toast";
+import React, { useMemo, useState } from "react";
 import { useApp } from "../context/AppContext";
 import { TaskStatus, Priority } from "../types";
-import { Check, BrainCircuit } from "lucide-react";
+import {
+  Check,
+  BrainCircuit,
+  ShieldCheck,
+  UserMinus,
+  Mail,
+  Send,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
 
 const AdminPanel = () => {
-  const { addTask, addUser, currentUser, users, removeUser } = useApp();
+  const {
+    addTask,
+    currentUser,
+    users,
+    removeUser,
+    updateUserRole,
+    inviteMember,
+  } = useApp();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -15,18 +30,30 @@ const AdminPanel = () => {
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [priority, setPriority] = useState<Priority>(Priority.MEDIUM);
   const [error, setError] = useState("");
-  const [memberError, setMemberError] = useState("");
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
-  const [isAddingMember, setIsAddingMember] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [confirmUserId, setConfirmUserId] = useState<string | null>(null);
+  const [confirmRoleChange, setConfirmRoleChange] = useState<{
+    userId: string;
+    to: "ADMIN" | "MEMBER";
+  } | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
-  // New member form state
-  const [memberName, setMemberName] = useState("");
-  const [memberEmail, setMemberEmail] = useState("");
-  const [memberRole, setMemberRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
-  const [memberAvatar, setMemberAvatar] = useState("");
+  // Invite form
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const verifiedUsers = useMemo(
+    () => users.filter((u) => u.isVerified !== false),
+    [users]
+  );
+  const pendingInvites = useMemo(
+    () => users.filter((u) => u.isVerified === false),
+    [users]
+  );
 
   const isValidEmail = (s: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
@@ -74,63 +101,59 @@ const AdminPanel = () => {
     }
   };
 
-  const handleAddMember = () => {
-    setMemberError("");
-    if (!memberName.trim())
-      return setMemberError("Please enter the member's name.");
-    if (!memberEmail.trim() || !isValidEmail(memberEmail))
-      return setMemberError("Please enter a valid email address.");
-    if (isAddingMember) return;
-
-    setIsAddingMember(true);
+  const handleSendInvite = async () => {
+    setInviteError("");
+    if (!inviteEmail.trim() || !isValidEmail(inviteEmail)) {
+      setInviteError("Please enter a valid email address.");
+      return;
+    }
+    if (isInviting) return;
+    setIsInviting(true);
     try {
-      const id = `u-${Date.now()}`;
-      const avatar =
-        memberAvatar.trim() ||
-        `https://picsum.photos/100/100?random=${Math.floor(
-          Math.random() * 1000
-        )}`;
-      addUser({
-        id,
-        name: memberName.trim(),
-        email: memberEmail.trim(),
-        role: memberRole,
-        avatar,
-      });
-      toast.success(`${memberName.trim()} added to the team.`);
-      setMemberName("");
-      setMemberEmail("");
-      setMemberRole("MEMBER");
-      setMemberAvatar("");
+      await inviteMember(inviteEmail.trim());
+      setInviteEmail("");
+    } catch {
+      // Interceptor surfaces the server error.
     } finally {
-      setIsAddingMember(false);
+      setIsInviting(false);
+    }
+  };
+
+  const handleResendInvite = async (email: string, userId: string) => {
+    if (resendingId) return;
+    setResendingId(userId);
+    try {
+      await inviteMember(email);
+    } catch {
+      // Interceptor surfaces the server error.
+    } finally {
+      setResendingId(null);
     }
   };
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-200">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <BrainCircuit size={24} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-            Admin Task Management
+          <h1 className="text-3xl font-extrabold tracking-tight text-brand">
+            Admin Operations
           </h1>
-          <p className="text-slate-500 dark:text-slate-400">
-            Create tasks manually, assign to a specific team member, and set
-            priority.
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Manage team members and create tasks with full assignment control.
           </p>
         </div>
       </div>
 
       {/* Team Members */}
-      <div className="mt-8 bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+      <div className="mt-8 glass-panel p-6 rounded-2xl shadow-sm">
         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
           Team Members
         </h2>
         <div className="space-y-2">
-          {users.map((u) => (
+          {verifiedUsers.map((u) => (
             <div
               key={u.id}
               className="flex items-center justify-between gap-3 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg"
@@ -155,94 +178,154 @@ const AdminPanel = () => {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setConfirmUserId(u.id)}
-                disabled={deletingUserId === u.id}
-                className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded disabled:opacity-60"
-              >
-                {deletingUserId === u.id ? "Deleting…" : "Delete"}
-              </button>
+              <div className="flex items-center gap-2">
+                {u.id !== currentUser.id && (
+                  u.role === "ADMIN" ? (
+                    <button
+                      onClick={() =>
+                        setConfirmRoleChange({ userId: u.id, to: "MEMBER" })
+                      }
+                      className="px-3 py-1.5 text-xs inline-flex items-center gap-1.5 border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-lg"
+                      title="Demote to member"
+                    >
+                      <UserMinus size={13} />
+                      Demote
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        setConfirmRoleChange({ userId: u.id, to: "ADMIN" })
+                      }
+                      className="px-3 py-1.5 text-xs inline-flex items-center gap-1.5 border border-amber-400/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-200 rounded-lg"
+                      title="Promote to admin"
+                    >
+                      <ShieldCheck size={13} />
+                      Promote
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={() => setConfirmUserId(u.id)}
+                  disabled={deletingUserId === u.id}
+                  className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-60"
+                >
+                  {deletingUserId === u.id ? "Deleting…" : "Delete"}
+                </button>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Add Team Member */}
-      <div className="mt-8 bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
-          Add Team Member
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-              Name
-            </label>
-            <input
-              type="text"
-              value={memberName}
-              onChange={(e) => setMemberName(e.target.value)}
-              placeholder="Full name"
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
-            />
+      {/* Invite a member */}
+      <div className="mt-8 glass-panel p-6 rounded-2xl shadow-sm">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500 dark:text-indigo-300 border border-indigo-500/20">
+            <Mail size={18} />
           </div>
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={memberEmail}
-              onChange={(e) => setMemberEmail(e.target.value)}
-              placeholder="member@example.com"
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-              Role
-            </label>
-            <select
-              value={memberRole}
-              onChange={(e) =>
-                setMemberRole(e.target.value as "ADMIN" | "MEMBER")
-              }
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
-            >
-              <option value="MEMBER">Member</option>
-              <option value="ADMIN">Admin</option>
-            </select>
-          </div>
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-              Avatar URL (optional)
-            </label>
-            <input
-              type="url"
-              value={memberAvatar}
-              onChange={(e) => setMemberAvatar(e.target.value)}
-              placeholder="https://..."
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
-            />
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Invite a member
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Send an email with a verification code. They'll land on a page to
+              set their name and password.
+            </p>
           </div>
         </div>
-        {memberError && (
-          <p className="mt-3 text-red-500 text-sm">{memberError}</p>
-        )}
-        <div className="mt-6 flex justify-end">
+        <form
+          className="flex flex-col md:flex-row gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendInvite();
+          }}
+        >
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="teammate@example.com"
+            className="flex-1 px-4 py-3 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm border border-slate-200/70 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          />
           <button
-            onClick={handleAddMember}
-            disabled={isAddingMember}
-            aria-busy={isAddingMember}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-60"
+            type="submit"
+            disabled={isInviting}
+            aria-busy={isInviting}
+            className="px-5 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-lg text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm"
           >
-            {isAddingMember && <Spinner size={16} className="text-white" />}
-            {isAddingMember ? "Adding…" : "Add Member"}
+            {isInviting ? (
+              <Spinner size={16} className="text-white" />
+            ) : (
+              <Send size={16} />
+            )}
+            {isInviting ? "Sending…" : "Send invite"}
           </button>
-        </div>
+        </form>
+        {inviteError && (
+          <p className="mt-3 text-red-500 text-sm">{inviteError}</p>
+        )}
       </div>
 
+      {/* Pending Invites */}
+      {pendingInvites.length > 0 && (
+        <div className="mt-8 glass-panel p-6 rounded-2xl shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Pending invites
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+              ({pendingInvites.length})
+            </span>
+          </h2>
+          <div className="space-y-2">
+            {pendingInvites.map((u) => (
+              <div
+                key={u.id}
+                className="flex items-center justify-between gap-3 px-3 py-2.5 border border-slate-200/70 dark:border-white/10 bg-white/40 dark:bg-white/[0.02] rounded-lg"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center">
+                    <Mail size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
+                      {u.email}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Waiting for them to finish setup
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleResendInvite(u.email, u.id)}
+                    disabled={resendingId === u.id}
+                    className="px-3 py-1.5 text-xs inline-flex items-center gap-1.5 border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-lg disabled:opacity-60"
+                    title="Resend invitation email"
+                  >
+                    {resendingId === u.id ? (
+                      <Spinner size={12} />
+                    ) : (
+                      <RefreshCw size={12} />
+                    )}
+                    {resendingId === u.id ? "Resending…" : "Resend"}
+                  </button>
+                  <button
+                    onClick={() => setConfirmUserId(u.id)}
+                    className="px-3 py-1.5 text-xs inline-flex items-center gap-1.5 border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-700 dark:text-red-300 rounded-lg"
+                    title="Revoke invitation"
+                  >
+                    <X size={12} />
+                    Revoke
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Manual Task Creation */}
-      <div className="mt-8 bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+      <div className="mt-8 glass-panel p-6 rounded-2xl shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col">
             <div className="flex flex-col">
@@ -397,6 +480,88 @@ const AdminPanel = () => {
                 {deletingUserId ? "Deleting…" : "Delete"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {confirmRoleChange && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm role change"
+        >
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => !isUpdatingRole && setConfirmRoleChange(null)}
+          />
+          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+            {(() => {
+              const target = users.find(
+                (u) => u.id === confirmRoleChange.userId
+              );
+              const toAdmin = confirmRoleChange.to === "ADMIN";
+              return (
+                <>
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
+                    {toAdmin ? "Promote to admin?" : "Demote to member?"}
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                    {toAdmin ? (
+                      <>
+                        <span className="font-medium">{target?.name}</span> will
+                        get full access to manage members, tasks, tracks, and
+                        settings.
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium">{target?.name}</span> will
+                        lose admin privileges and become a regular member.
+                      </>
+                    )}
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:opacity-60"
+                      disabled={isUpdatingRole}
+                      onClick={() => setConfirmRoleChange(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className={`px-4 py-2 rounded-lg text-white inline-flex items-center gap-2 disabled:opacity-60 ${
+                        toAdmin
+                          ? "bg-amber-600 hover:bg-amber-700"
+                          : "bg-slate-700 hover:bg-slate-800"
+                      }`}
+                      disabled={isUpdatingRole}
+                      onClick={async () => {
+                        const change = confirmRoleChange;
+                        if (!change) return;
+                        setIsUpdatingRole(true);
+                        try {
+                          await updateUserRole(change.userId, change.to);
+                          setConfirmRoleChange(null);
+                        } catch {
+                          // API interceptor shows the error toast.
+                        } finally {
+                          setIsUpdatingRole(false);
+                        }
+                      }}
+                    >
+                      {isUpdatingRole && (
+                        <Spinner size={16} className="text-white" />
+                      )}
+                      {isUpdatingRole
+                        ? "Updating…"
+                        : toAdmin
+                        ? "Promote"
+                        : "Demote"}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

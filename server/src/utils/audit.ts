@@ -10,7 +10,9 @@ type AuditEvent =
   | "task.delete"
   | "track.delete"
   | "track.rename"
-  | "user.delete";
+  | "user.delete"
+  | "user.invite"
+  | "user.role_change";
 
 interface AuditContext {
   actorId?: string;

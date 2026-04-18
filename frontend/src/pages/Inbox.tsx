@@ -372,15 +372,15 @@ const Inbox: React.FC = () => {
 
   return (
     <div className="p-4 md:p-6 h-full">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-200">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <InboxIcon size={20} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+          <h1 className="text-3xl font-extrabold tracking-tight text-brand">
             Inbox
           </h1>
-          <p className="text-slate-500 dark:text-slate-300 text-sm">
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
             Direct messages with team members
           </p>
         </div>
@@ -388,7 +388,7 @@ const Inbox: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Conversation list */}
-        <div className="md:col-span-4 lg:col-span-3 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+        <div className="md:col-span-4 lg:col-span-3 glass-panel rounded-2xl overflow-hidden">
           <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300">
             Conversations
           </div>
@@ -448,7 +448,7 @@ const Inbox: React.FC = () => {
         </div>
 
         {/* Thread */}
-        <div className="md:col-span-8 lg:col-span-9 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col min-h-[60vh]">
+        <div className="md:col-span-8 lg:col-span-9 glass-panel rounded-2xl flex flex-col min-h-[60vh]">
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
             {selectedUser ? (
               <>
@@ -760,7 +760,7 @@ const Inbox: React.FC = () => {
                             mine
                               ? "left-0 -translate-x-full"
                               : "right-0 translate-x-full"
-                          } top-0 mt-2 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 w-64 max-w-[90vw]`}
+                          } top-0 mt-2 glass-panel rounded-2xl shadow-lg z-20 w-64 max-w-[90vw]`}
                         >
                           <div className="p-2 border-b border-slate-100 dark:border-slate-800">
                             <input

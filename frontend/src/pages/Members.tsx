@@ -9,13 +9,13 @@ const Members: React.FC = () => {
   const others = users.filter((u) => u.id !== currentUser.id);
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-200">
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <Users size={20} />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+          <h1 className="text-3xl font-extrabold tracking-tight text-brand">
             Members
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
@@ -32,7 +32,7 @@ const Members: React.FC = () => {
           return (
             <div
               key={u.id}
-              className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-center gap-3"
+              className="glass-panel rounded-2xl p-4 flex items-center gap-3 hover:border-indigo-500/30 transition-colors"
             >
               <Avatar
                 src={u.avatar}
@@ -51,13 +51,13 @@ const Members: React.FC = () => {
                 <div className="mt-2 flex items-center gap-2">
                   <Link
                     to={`/profile?userId=${u.id}`}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200/70 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5"
                   >
                     View Profile
                   </Link>
                   <Link
                     to={`/inbox?with=${u.id}`}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-sm"
                   >
                     Message
                   </Link>

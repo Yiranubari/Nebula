@@ -65,8 +65,23 @@ class ErrorBoundary extends React.Component<
 
 const ConnectionBanner = () => {
   const { isAuthenticated } = useApp();
-  const { isConnected, isReconnecting } = useSocket();
+  const { isConnected, isReconnecting, hasAttempted } = useSocket();
+  // Grace period on first page load: give the socket ~3s to establish before
+  // warning the user. Suppresses the banner from flashing during handshake.
+  const [graceElapsed, setGraceElapsed] = useState(false);
+  useEffect(() => {
+    if (!hasAttempted) return;
+    setGraceElapsed(false);
+    const t = window.setTimeout(() => setGraceElapsed(true), 3000);
+    return () => window.clearTimeout(t);
+  }, [hasAttempted]);
+
   if (!isAuthenticated || isConnected) return null;
+  // Don't show anything until we've tried at least once.
+  if (!hasAttempted) return null;
+  // Reconnect attempts always show the reconnecting variant immediately.
+  if (!isReconnecting && !graceElapsed) return null;
+
   return (
     <div
       role="status"
@@ -129,17 +144,25 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   }, [mobileOpen]);
 
   return (
-    <div className="flex min-h-screen font-sans bg-slate-50 text-slate-900 dark:bg-dark dark:text-slate-100">
+    <div className="relative flex min-h-screen font-sans text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-dark">
+      {/* Atmospheric background — gradient orbs + subtle grid */}
+      {!isPublicRoute && (
+        <>
+          <div className="app-atmosphere" aria-hidden="true" />
+          <div className="app-atmosphere-grid" aria-hidden="true" />
+        </>
+      )}
+
       {/* Desktop sidebar */}
       {isAuthenticated && !isPublicRoute && (
-        <div className="hidden md:block">
+        <div className="hidden md:block relative z-10">
           <Sidebar variant="desktop" />
         </div>
       )}
 
       {/* Mobile top bar */}
       {isAuthenticated && !isPublicRoute ? (
-        <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-slate-200 dark:bg-surface dark:border-white/10 z-40 flex items-center px-4">
+        <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 dark:bg-dark/60 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/10 z-40 flex items-center px-4">
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
@@ -151,10 +174,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <Menu size={20} />
           </button>
           <div className="ml-3 flex items-center gap-2">
-            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-sm">
-              N
-            </div>
-            <span className="font-semibold text-slate-800 dark:text-slate-100">
+            <img
+              src="/logo.svg"
+              alt="Nebula"
+              className="w-8 h-8 drop-shadow-[0_0_10px_rgba(168,85,247,0.45)]"
+            />
+            <span className="font-semibold text-slate-800 dark:text-slate-100 tracking-tight">
               Nebula
             </span>
           </div>
@@ -198,7 +223,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </>
       )}
 
-      <main className="flex-1 min-h-screen min-w-0 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-dark pt-14 md:pt-0">
+      <main className="relative z-10 flex-1 min-h-screen min-w-0 overflow-y-auto overflow-x-hidden pt-14 md:pt-0">
         {children}
       </main>
     </div>
@@ -223,18 +248,19 @@ function App() {
    */
   const SocketConnector = ({ children }: { children: React.ReactNode }) => {
     const { isAuthenticated } = useApp();
-    const { connect, disconnect, isConnected } = useSocket();
+    const { connect, disconnect } = useSocket();
 
+    // Page-reload reconnect: if we come back to a page already authed
+    // (e.g., after a refresh), hook the socket up to the stored token.
+    // `connect()` is idempotent — it no-ops if the current socket already
+    // uses this token.
     useEffect(() => {
       if (isAuthenticated) {
-        // Grab the JWT that was stored at login
         const token =
           localStorage.getItem("nebula.accessToken") ||
           localStorage.getItem("nebula.token.v1") ||
           "";
-        if (token && !isConnected) {
-          connect(token);
-        }
+        if (token) connect(token);
       } else {
         disconnect();
       }

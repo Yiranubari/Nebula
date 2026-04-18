@@ -31,4 +31,14 @@ export const usersService = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/users/${id}`);
   },
+
+  updateRole: async (id: string, role: "ADMIN" | "MEMBER"): Promise<User> => {
+    const { data } = await api.patch(`/users/${id}/role`, { role });
+    return data.user ?? data;
+  },
+
+  invite: async (email: string): Promise<User> => {
+    const { data } = await api.post("/auth/invite", { email });
+    return data.user ?? data;
+  },
 };

@@ -4,69 +4,66 @@ import {
   ServerToClientEvents,
   InterServerEvents,
   SocketData,
-  PresenceStatus,
-  PresenceInfo,
 } from "@nebula/shared";
+import {
+  ensurePresence,
+  getPresence,
+  deletePresence,
+  broadcastPresence,
+  snapshot,
+} from "../presenceStore";
 
-type NebServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
-type NebSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
-
-// In-memory presence store
-// Key: userId
-const presenceStore = new Map<string, { status: PresenceStatus; lastActive: string; connections: Set<string> }>();
+type NebServer = Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
+type NebSocket = Socket<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
 
 export const registerPresenceHandlers = (io: NebServer, socket: NebSocket) => {
   const userId = socket.data.userId;
 
-  // Broadcast presence to all connected clients
-  const broadcastPresence = (status: PresenceStatus) => {
-    const info: PresenceInfo = {
-      status,
-      lastActive: presenceStore.get(userId)?.lastActive ?? new Date().toISOString(),
-    };
-    io.emit("presence:update", { userId, info });
-  };
+  // ─── Initial sync ──────────────────────────────────────────────────────────
+  // Before we mark this socket as online, hand them a snapshot of everyone
+  // else's current presence so they can render "X is in a huddle" immediately
+  // rather than waiting for the next change event.
+  socket.emit("presence:snapshot", { presence: snapshot() });
 
-  // Initial connection logic
-  let userPresence = presenceStore.get(userId);
-  if (!userPresence) {
-    userPresence = {
-      status: "online",
-      lastActive: new Date().toISOString(),
-      connections: new Set([socket.id]),
-    };
-    presenceStore.set(userId, userPresence);
-    broadcastPresence("online");
-  } else {
-    userPresence.connections.add(socket.id);
-    userPresence.status = "online";
-    userPresence.lastActive = new Date().toISOString();
-    broadcastPresence("online");
-  }
+  // Upsert / bump this user to online.
+  const presence = ensurePresence(userId);
+  presence.connections.add(socket.id);
+  presence.status = "online";
+  presence.lastActive = new Date().toISOString();
+  broadcastPresence(io, userId);
 
   // Handle explicit presence change (e.g. user sets themselves to "idle")
   socket.on("presence:set", (payload) => {
-    const presence = presenceStore.get(userId);
-    if (presence) {
-      presence.status = payload.status;
-      presence.lastActive = new Date().toISOString();
-      broadcastPresence(payload.status);
-    }
+    const p = getPresence(userId);
+    if (!p) return;
+    p.status = payload.status;
+    p.lastActive = new Date().toISOString();
+    broadcastPresence(io, userId);
   });
 
   // Handle disconnect
   socket.on("disconnect", () => {
-    const presence = presenceStore.get(userId);
-    if (!presence) return;
-    presence.connections.delete(socket.id);
+    const p = getPresence(userId);
+    if (!p) return;
+    p.connections.delete(socket.id);
+    if (p.connections.size > 0) return;
 
-    // Only go offline when all connections for this user drop
-    if (presence.connections.size === 0) {
-      presence.status = "offline";
-      presence.lastActive = new Date().toISOString();
-      broadcastPresence("offline");
-      // Remove the entry entirely to avoid unbounded map growth for ephemeral users.
-      presenceStore.delete(userId);
-    }
+    // Last socket dropped — flip to offline, clear any stale huddle pin,
+    // broadcast, and evict from the map so it doesn't grow unbounded.
+    p.status = "offline";
+    p.inHuddleTrackId = null;
+    p.lastActive = new Date().toISOString();
+    broadcastPresence(io, userId);
+    deletePresence(userId);
   });
 };

@@ -18,35 +18,91 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+/**
+ * Single in-flight refresh promise. When multiple requests 401 in parallel,
+ * they all await the same refresh rather than each firing one — otherwise the
+ * server's atomic rotation would reject all but the first and cause the
+ * remaining requests to fail + log the user out.
+ */
+let refreshInFlight: Promise<string | null> | null = null;
+
+const doRefresh = async (): Promise<string | null> => {
+  const res = await api.post('/auth/refresh');
+  const token = res.data?.accessToken;
+  if (token) {
+    localStorage.setItem('nebula.accessToken', token);
+    return token;
+  }
+  return null;
+};
+
+/**
+ * Server wraps every successful payload as `{ status: "success", data: … }`
+ * (see `server/src/core/BaseController.ts`). Unwrap once here so every service
+ * call can treat `res.data` as the real payload. Error responses keep their
+ * original shape so the error interceptor + toasts still read `message`.
+ */
+api.interceptors.response.use(
+  (response) => {
+    const body = response.data;
+    if (
+      body &&
+      typeof body === 'object' &&
+      body.status === 'success' &&
+      'data' in body
+    ) {
+      response.data = body.data;
+    }
+    return response;
+  }
+);
+
+const sharedRefresh = (): Promise<string | null> => {
+  if (!refreshInFlight) {
+    refreshInFlight = doRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+};
+
+const goToLogin = () => {
+  localStorage.removeItem('nebula.accessToken');
+  localStorage.setItem('nebula.auth.v1', 'false');
+  if (
+    window.location.hash !== '#/login' &&
+    window.location.hash !== '#/signup'
+  ) {
+    window.location.hash = '#/login';
+  }
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Auto-refresh on 401 (token expired) — attempt once
+    // Auto-refresh on 401 (token expired) — attempt once per request, sharing
+    // a single refresh across concurrent failures.
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/refresh')
+      !originalRequest.url?.includes('/auth/refresh') &&
+      !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/verify-otp') &&
+      !originalRequest.url?.includes('/auth/register')
     ) {
       originalRequest._retry = true;
       try {
-        const res = await api.post('/auth/refresh');
-        if (res.data.accessToken) {
-          localStorage.setItem('nebula.accessToken', res.data.accessToken);
-          originalRequest.headers.Authorization = `Bearer ${res.data.accessToken}`;
+        const newToken = await sharedRefresh();
+        if (newToken) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         }
+        goToLogin();
+        return Promise.reject(error);
       } catch {
-        // Refresh failed — force logout
-        localStorage.removeItem('nebula.accessToken');
-        localStorage.setItem('nebula.auth.v1', 'false');
-        if (
-          window.location.hash !== '#/login' &&
-          window.location.hash !== '#/signup'
-        ) {
-          window.location.hash = '#/login';
-        }
+        goToLogin();
         return Promise.reject(error);
       }
     }
@@ -54,9 +110,18 @@ api.interceptors.response.use(
     const message =
       error.response?.data?.message || error.message || 'An error occurred';
 
-    // Suppress 401 redirect noise on auth pages themselves
+    // Suppress 401 redirect noise on auth pages themselves. Let auth endpoints
+    // (login/register/verify-otp) surface their own error toast so users see
+    // "Invalid credentials" instead of a silent redirect.
     if (error.response?.status === 401) {
+      const url = originalRequest?.url || '';
       if (
+        url.includes('/auth/login') ||
+        url.includes('/auth/verify-otp') ||
+        url.includes('/auth/register')
+      ) {
+        toast.error(message);
+      } else if (
         window.location.hash !== '#/login' &&
         window.location.hash !== '#/signup'
       ) {

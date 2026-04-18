@@ -130,7 +130,18 @@ const Sidebar: React.FC<SidebarProps> = ({
       ).length,
     },
     { icon: UsersIcon, label: "Members", path: "/members" },
-    { icon: PhoneCall, label: "Huddles", path: "/huddles" },
+    {
+      icon: PhoneCall,
+      label: "Huddles",
+      path: "/huddles",
+      // Count of distinct tracks with at least one user currently in a huddle.
+      badge: new Set(
+        (Object.values(presence) as Array<{ inHuddleTrackId?: string | null }>)
+          .map((p) => p?.inHuddleTrackId)
+          .filter((v): v is string => !!v)
+      ).size,
+      badgeTone: "live" as const,
+    },
     {
       icon: Bell,
       label: "Notifications",
@@ -146,8 +157,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const containerBase =
     variant === "mobile"
-      ? "w-[85vw] max-w-xs bg-white dark:bg-surface h-full flex flex-col border-r border-slate-200 dark:border-white/10"
-      : "w-64 bg-white dark:bg-surface h-screen flex flex-col border-r border-slate-200 dark:border-white/10 sticky top-0";
+      ? "w-[85vw] max-w-xs h-full flex flex-col bg-white/95 dark:bg-[#0b1120]/85 backdrop-blur-xl border-r border-slate-200/60 dark:border-white/10"
+      : "w-64 h-screen flex flex-col bg-white/70 dark:bg-[#0b1120]/60 backdrop-blur-xl border-r border-slate-200/60 dark:border-white/10 sticky top-0";
 
   return (
     <div
@@ -160,13 +171,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           to="/landing"
           onClick={variant === "mobile" ? onClose : undefined}
           aria-label="Go to landing"
-          className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold hover:opacity-90"
+          className="group inline-flex items-center justify-center"
         >
-          N
+          <img
+            src="/logo.svg"
+            alt="Nebula"
+            className="w-10 h-10 group-hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_12px_rgba(168,85,247,0.45)]"
+          />
         </Link>
-        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-          Nebula
-        </h1>
+        <h1 className="text-xl font-bold tracking-tight text-brand">Nebula</h1>
         {variant === "mobile" && (
           <button
             onClick={onClose}
@@ -179,42 +192,63 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            onClick={variant === "mobile" ? onClose : undefined}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              isActive(item.path)
-                ? "bg-indigo-50 text-indigo-600 dark:bg-white/10 dark:text-white"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
-            }`}
-          >
-            <item.icon size={20} />
-            {item.label}
-            {typeof (item as any).badge === "number" &&
-              (item as any).badge > 0 && (
-                <span
-                  className={`ml-auto text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-100 dark:text-amber-700 ${
-                    pulse ? "animate-bounce" : ""
-                  }`}
-                >
-                  {(item as any).badge}
-                </span>
+        {navItems.map((item) => {
+          const active = isActive(item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={variant === "mobile" ? onClose : undefined}
+              className={`relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                active
+                  ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-indigo-700 dark:text-white border border-indigo-500/20 dark:border-white/10 shadow-sm"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
+              }`}
+            >
+              {active && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-gradient-to-b from-indigo-400 to-purple-500" />
               )}
-          </Link>
-        ))}
+              <item.icon
+                size={18}
+                className={
+                  active
+                    ? "text-indigo-500 dark:text-indigo-300"
+                    : "text-slate-500 dark:text-slate-400"
+                }
+              />
+              {item.label}
+              {typeof (item as any).badge === "number" &&
+                (item as any).badge > 0 && (
+                  <span
+                    className={`ml-auto inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white shadow ${
+                      (item as any).badgeTone === "live"
+                        ? "bg-gradient-to-r from-emerald-500 to-green-500"
+                        : "bg-gradient-to-r from-amber-400 to-pink-500"
+                    } ${pulse ? "animate-bounce" : ""}`}
+                  >
+                    {(item as any).badgeTone === "live" && (
+                      <span className="relative inline-flex h-1.5 w-1.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                      </span>
+                    )}
+                    {(item as any).badge}
+                  </span>
+                )}
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="p-4 border-t border-slate-100 dark:border-white/10">
         <div className="mb-4 px-2">
-          <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 uppercase mb-2">
+          <p className="text-[10px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2">
             Theme
           </p>
           <button
             type="button"
             onClick={toggleTheme}
-            className="w-full px-3 py-2 text-xs rounded bg-slate-100 hover:bg-slate-200 text-slate-700 inline-flex items-center justify-center gap-2 dark:bg-white/10 dark:hover:bg-white/15 dark:text-slate-100"
+            className="w-full px-3 py-2 text-xs rounded-lg bg-slate-100/70 hover:bg-slate-200/70 text-slate-700 inline-flex items-center justify-center gap-2 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-100 border border-slate-200/60 dark:border-white/10 transition-colors"
             aria-label={
               theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
             }
@@ -226,12 +260,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {isAuthenticated && (
           <div className="mb-4 px-2">
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 uppercase mb-2">
+            <p className="text-[10px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2">
               Account
             </p>
             <button
               onClick={() => setConfirmLogout(true)}
-              className="w-full px-3 py-2 text-xs rounded bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-slate-100"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-slate-100/70 hover:bg-slate-200/70 text-slate-700 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-100 border border-slate-200/60 dark:border-white/10 transition-colors"
             >
               Sign in as different user
             </button>

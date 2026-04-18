@@ -180,9 +180,17 @@ export default function SearchPage() {
   const showTasks = category === "All" || category === "Tasks";
 
   return (
-    <div className="p-6">
+    <div className="p-6 md:p-8 max-w-6xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-3xl font-extrabold tracking-tight text-brand">
+          Search
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Find messages, files, and tasks across your workspace.
+        </p>
+      </div>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4 mb-4">
-        <div className="flex items-center gap-2 flex-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 flex-1 border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg px-3 py-2">
           <SearchIcon
             size={18}
             className="text-slate-500 dark:text-slate-400"
@@ -222,7 +230,7 @@ export default function SearchPage() {
         </div>
         <div className="flex items-center gap-2">
           <Filter size={18} className="text-slate-500 dark:text-slate-400" />
-          <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface overflow-hidden">
+          <div className="flex rounded-lg border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
             {(["All", "Messages", "Files", "Tasks"] as Category[]).map((c) => (
               <button
                 key={c}
@@ -240,7 +248,7 @@ export default function SearchPage() {
           <select
             value={trackFilter}
             onChange={(e) => setTrackFilter(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface text-slate-900 dark:text-slate-100"
+            className="px-3 py-2 text-sm rounded-lg border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
           >
             <option value="all">All Tracks</option>
             {tracks.map((t) => (
@@ -261,7 +269,7 @@ export default function SearchPage() {
             type="datetime-local"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface text-slate-900 dark:text-slate-100"
+            className="px-3 py-2 text-sm rounded-lg border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -272,7 +280,7 @@ export default function SearchPage() {
             type="datetime-local"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface text-slate-900 dark:text-slate-100"
+            className="px-3 py-2 text-sm rounded-lg border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
           />
         </div>
       </div>
@@ -296,7 +304,7 @@ export default function SearchPage() {
                 return (
                   <div
                     key={item.id}
-                    className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface rounded-lg p-3"
+                    className="border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
                   >
                     <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">
                       {track ? `#${track.name}` : "#unknown"} ·{" "}
@@ -345,7 +353,7 @@ export default function SearchPage() {
                     key={`${message.id}-${item.name}-${item.type}-${
                       item.size || 0
                     }`}
-                    className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface rounded-lg p-3"
+                    className="border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
                   >
                     <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">
                       {track ? `#${track.name}` : "#unknown"} ·{" "}
@@ -389,7 +397,7 @@ export default function SearchPage() {
               {taskResults.map(({ item }) => (
                 <div
                   key={item.id}
-                  className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface rounded-lg p-3"
+                  className="border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
                 >
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {item.title}

@@ -11,6 +11,7 @@ export class MessagesController extends BaseController {
     const trackId = req.params.trackId as string;
     const message = await this.messagesService.sendMessage(
       req.user!.id,
+      req.user!.role,
       trackId,
       req.body
     );
@@ -26,6 +27,7 @@ export class MessagesController extends BaseController {
 
     const result = await this.messagesService.getMessages(
       req.user!.id,
+      req.user!.role,
       trackId,
       limit,
       cursor
@@ -63,6 +65,7 @@ export class MessagesController extends BaseController {
   reactMessage = async (req: Request, res: Response) => {
     const message = await this.messagesService.toggleReaction(
       req.user!.id,
+      req.user!.role,
       req.params.messageId as string,
       req.body.emoji
     );
@@ -72,6 +75,7 @@ export class MessagesController extends BaseController {
   markRead = async (req: Request, res: Response) => {
     const message = await this.messagesService.markRead(
       req.user!.id,
+      req.user!.role,
       req.params.messageId as string
     );
     this.ok(res, message);

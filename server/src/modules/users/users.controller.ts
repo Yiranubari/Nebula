@@ -35,4 +35,14 @@ export class UsersController extends BaseController {
     );
     this.noContent(res);
   };
+
+  updateRole = async (req: Request, res: Response) => {
+    const user = await this.usersService.updateRole(
+      req.user!.id,
+      req.user!.role,
+      req.params.id as string,
+      req.body.role
+    );
+    this.ok(res, user);
+  };
 }

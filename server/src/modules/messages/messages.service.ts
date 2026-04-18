@@ -4,16 +4,28 @@ import { AppError } from "../../utils/AppError";
 
 type Role = "ADMIN" | "MEMBER";
 
-export class MessagesService extends BaseService {
-  async sendMessage(userId: string, trackId: string, data: SendMessageDto) {
-    // Check if user is in track
-    const trackMember = await this.prisma.trackMember.findUnique({
-      where: {
-        trackId_userId: { trackId, userId },
-      },
-    });
+/**
+ * Admins can read and write in every track regardless of explicit membership
+ * (they moderate the whole workspace). Members must be on the track roster.
+ */
+const canAccessTrack = (role: Role, isMember: boolean) =>
+  role === "ADMIN" || isMember;
 
-    if (!trackMember) {
+export class MessagesService extends BaseService {
+  private async isMember(trackId: string, userId: string) {
+    const member = await this.prisma.trackMember.findUnique({
+      where: { trackId_userId: { trackId, userId } },
+    });
+    return !!member;
+  }
+
+  async sendMessage(
+    userId: string,
+    role: Role,
+    trackId: string,
+    data: SendMessageDto
+  ) {
+    if (!canAccessTrack(role, await this.isMember(trackId, userId))) {
       throw new AppError(
         403,
         "You must be a member of the track to send messages"
@@ -37,18 +49,12 @@ export class MessagesService extends BaseService {
 
   async getMessages(
     userId: string,
+    role: Role,
     trackId: string,
     limit = 50,
     cursor?: string
   ) {
-    // Check if user is in track
-    const trackMember = await this.prisma.trackMember.findUnique({
-      where: {
-        trackId_userId: { trackId, userId },
-      },
-    });
-
-    if (!trackMember) {
+    if (!canAccessTrack(role, await this.isMember(trackId, userId))) {
       throw new AppError(
         403,
         "You must be a member of the track to view messages"
@@ -110,11 +116,12 @@ export class MessagesService extends BaseService {
     });
   }
 
-  private async assertTrackMember(trackId: string, userId: string) {
-    const member = await this.prisma.trackMember.findUnique({
-      where: { trackId_userId: { trackId, userId } },
-    });
-    if (!member) {
+  private async assertTrackAccess(
+    trackId: string,
+    userId: string,
+    role: Role
+  ) {
+    if (!canAccessTrack(role, await this.isMember(trackId, userId))) {
       throw new AppError(403, "You must be a member of the track");
     }
   }
@@ -130,7 +137,7 @@ export class MessagesService extends BaseService {
     });
     if (!message) throw new AppError(404, "Message not found");
 
-    await this.assertTrackMember(message.trackId, userId);
+    await this.assertTrackAccess(message.trackId, userId, role);
     if (role !== "ADMIN" && message.userId !== userId) {
       throw new AppError(403, "Only admins or the author can pin this message");
     }
@@ -144,13 +151,18 @@ export class MessagesService extends BaseService {
     });
   }
 
-  async toggleReaction(userId: string, messageId: string, emoji: string) {
+  async toggleReaction(
+    userId: string,
+    role: Role,
+    messageId: string,
+    emoji: string
+  ) {
     const message = await this.prisma.message.findUnique({
       where: { id: messageId },
     });
     if (!message) throw new AppError(404, "Message not found");
 
-    await this.assertTrackMember(message.trackId, userId);
+    await this.assertTrackAccess(message.trackId, userId, role);
 
     const reactions = (message.reactions as Record<string, string[]>) ?? {};
     const existing = reactions[emoji] ?? [];
@@ -170,13 +182,13 @@ export class MessagesService extends BaseService {
     });
   }
 
-  async markRead(userId: string, messageId: string) {
+  async markRead(userId: string, role: Role, messageId: string) {
     const message = await this.prisma.message.findUnique({
       where: { id: messageId },
     });
     if (!message) throw new AppError(404, "Message not found");
 
-    await this.assertTrackMember(message.trackId, userId);
+    await this.assertTrackAccess(message.trackId, userId, role);
 
     if (message.readBy.includes(userId)) return message;
 
