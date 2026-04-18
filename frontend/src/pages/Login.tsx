@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, LogIn } from "lucide-react";
+import toast from "react-hot-toast";
 import Spinner from "../components/Spinner";
 import {
   isProbablySlowNetwork,
@@ -13,12 +14,13 @@ const Login = () => {
   const { login, verifyOtp } = useApp();
   const { logout } = useApp(); // not strictly needed, but let's grab users as well if referenced, wait let's just do:
   const { login: doLogin, users, verifyOtp: doVerify } = useApp();
-  const [email, setEmail] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [email, setEmail] = useState(location.state?.email || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
   const [mode, setMode] = useState<"login" | "forgot" | "otp" | "reset">(
-    "login"
+    location.state?.requiresOtp ? "otp" : "login"
   );
   const [otpDigits, setOtpDigits] = useState<string[]>(() =>
     Array.from({ length: 6 }, () => "")
@@ -30,23 +32,17 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string>("");
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const navigate = useNavigate();
 
   const onGoogleSignIn = () => {
     // UI-only placeholder: backend/OAuth wiring comes later.
-    setError("");
-    setSuccessMessage("");
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSigningIn) return;
-    setError("");
-    setSuccessMessage("");
     if (!email.trim()) {
-      setError("Please enter your email.");
+      toast.error("Please enter your email.");
       return;
     }
 
@@ -72,10 +68,8 @@ const Login = () => {
 
   const onSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccessMessage("");
     if (!email.trim()) {
-      setError("Please enter your email.");
+      toast.error("Please enter your email.");
       return;
     }
     // UI-only: pretend we sent an OTP.
@@ -86,10 +80,8 @@ const Login = () => {
 
   const onVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccessMessage("");
     if (!otpValue || otpValue.length !== 6) {
-      setError("Please enter the 6-digit code.");
+      toast.error("Please enter the 6-digit code.");
       return;
     }
         const ok = await doVerify(email, otpValue);
@@ -102,21 +94,19 @@ const Login = () => {
 
   const onResetPassword = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccessMessage("");
     if (!newPassword.trim() || newPassword.length < 6) {
-      setError("Password should be at least 6 characters.");
+      toast.error("Password should be at least 6 characters.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
       return;
     }
     // UI-only: pretend reset succeeded.
     setNewPassword("");
     setConfirmPassword("");
     setOtpDigits(Array.from({ length: 6 }, () => ""));
-    setSuccessMessage("Password reset UI complete. You can sign in now.");
+    toast.success("Password reset UI complete. You can sign in now.");
     setMode("login");
   };
 
@@ -223,11 +213,6 @@ const Login = () => {
               </div>
             </div>
 
-            {successMessage && (
-              <p className="text-green-700 text-sm">{successMessage}</p>
-            )}
-            {error && <p className="text-red-600 text-sm">{error}</p>}
-
             <button
               type="submit"
               disabled={isSigningIn}
@@ -291,8 +276,6 @@ const Login = () => {
             <button
               type="button"
               onClick={() => {
-                setError("");
-                setSuccessMessage("");
                 setMode("forgot");
               }}
               className="w-full text-sm text-indigo-600 hover:text-indigo-700"
@@ -319,7 +302,6 @@ const Login = () => {
                 className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
-            {error && <p className="text-red-600 text-sm">{error}</p>}
             <button
               type="submit"
               className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
@@ -329,7 +311,6 @@ const Login = () => {
             <button
               type="button"
               onClick={() => {
-                setError("");
                 setMode("login");
               }}
               className="w-full inline-flex items-center justify-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"
@@ -369,7 +350,6 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setError("");
                   setMode("forgot");
                 }}
                 className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 inline-flex items-center gap-2"
@@ -379,7 +359,6 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setError("");
                   setOtpDigits(Array.from({ length: 6 }, () => ""));
                   setTimeout(() => otpRefs.current?.[0]?.focus(), 0);
                 }}
@@ -388,7 +367,6 @@ const Login = () => {
                 Resend code
               </button>
             </div>
-            {error && <p className="text-red-600 text-sm">{error}</p>}
             <button
               type="submit"
               className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
@@ -462,8 +440,6 @@ const Login = () => {
               </div>
             </div>
 
-            {error && <p className="text-red-600 text-sm">{error}</p>}
-
             <button
               type="submit"
               className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
@@ -474,7 +450,6 @@ const Login = () => {
             <button
               type="button"
               onClick={() => {
-                setError("");
                 setMode("login");
               }}
               className="w-full inline-flex items-center justify-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"

@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import { useNavigate, Link } from "react-router-dom";
 import Avatar from "../components/Avatar";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
+import toast from "react-hot-toast";
 import Spinner from "../components/Spinner";
 import {
   isProbablySlowNetwork,
@@ -17,16 +18,14 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [avatar, setAvatar] = useState("");
-  const [error, setError] = useState("");
   const [isSigningUp, setIsSigningUp] = useState(false);
   const navigate = useNavigate();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSigningUp) return;
-    setError("");
     if (!name.trim() || !email.trim()) {
-      setError("Please provide name and email.");
+      toast.error("Please provide name and email.");
       return;
     }
 
@@ -38,7 +37,7 @@ const Signup = () => {
         }
         const ok = await signup(name, email, password, avatar);
         if (ok) {
-           navigate("/login");
+           navigate("/login", { state: { requiresOtp: true, email } });
         }
       },
     });
@@ -111,7 +110,6 @@ const Signup = () => {
               </button>
             </div>
           </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={isSigningUp}

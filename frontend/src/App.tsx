@@ -229,8 +229,8 @@ function App() {
 
   return (
     <ThemeProvider>
-      <AppProvider>
-        <SocketProvider>
+      <SocketProvider>
+        <AppProvider>
           <SocketConnector>
             <CallProvider>
               <HashRouter>
@@ -329,8 +329,8 @@ function App() {
               </HashRouter>
             </CallProvider>
           </SocketConnector>
-        </SocketProvider>
-      </AppProvider>
+        </AppProvider>
+      </SocketProvider>
     </ThemeProvider>
   );
 }
