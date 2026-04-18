@@ -4,10 +4,13 @@ import { createApp } from "./app";
 import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { prisma } from "./db/prisma";
+import { initSocket } from "./realtime/socket";
 
 async function main() {
   const app = createApp();
   const server = http.createServer(app);
+  
+  initSocket(server);
 
   try {
     await prisma.$connect();

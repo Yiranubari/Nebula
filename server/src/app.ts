@@ -12,6 +12,7 @@ import trackRoutes from "./modules/tracks/tracks.routes";
 import messageRoutes from "./modules/messages/messages.routes";
 import dmRoutes from "./modules/direct-messages/dm.routes";
 import notificationRoutes from "./modules/notifications/notifications.routes";
+import uploadRoutes from "./modules/uploads/uploads.routes";
 
 export function createApp() {
   const app = express();
@@ -39,6 +40,7 @@ export function createApp() {
   app.use("/api/messages", messageRoutes);
   app.use("/api/dm", dmRoutes);
   app.use("/api/notifications", notificationRoutes);
+  app.use("/api/uploads", uploadRoutes);
 
   app.use(errorMiddleware);
 
