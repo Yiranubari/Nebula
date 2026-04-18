@@ -16,16 +16,33 @@ const Signup = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [avatar, setAvatar] = useState("");
   const [isSigningUp, setIsSigningUp] = useState(false);
   const navigate = useNavigate();
 
+  const isValidEmail = (s: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSigningUp) return;
-    if (!name.trim() || !email.trim()) {
-      toast.error("Please provide name and email.");
+    if (!name.trim()) {
+      toast.error("Please enter your full name.");
+      return;
+    }
+    if (!email.trim() || !isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (!password || password.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
       return;
     }
 
@@ -109,6 +126,37 @@ const Signup = () => {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              At least 8 characters.
+            </p>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter your password"
+                className="w-full px-4 py-3 pr-12 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                title={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {confirmPassword.length > 0 && confirmPassword !== password && (
+              <p className="mt-1 text-xs text-red-500">
+                Passwords do not match.
+              </p>
+            )}
           </div>
           <button
             type="submit"

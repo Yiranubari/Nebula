@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import { useApp } from "../context/AppContext";
 import Avatar from "../components/Avatar";
+import Spinner from "../components/Spinner";
 import { UserCircle, Image as ImageIcon, Trash2 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -14,23 +16,35 @@ const Profile = () => {
   const [name, setName] = useState(currentUser.name);
   const [email, setEmail] = useState(currentUser.email);
   const [avatarUrl, setAvatarUrl] = useState(currentUser.avatar || "");
-  const [toast, setToast] = useState("");
   const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isValidEmail = (s: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
   const canSave = useMemo(() => {
-    return name.trim().length > 0 && email.trim().length > 0;
+    return (
+      name.trim().length > 0 &&
+      email.trim().length > 0 &&
+      isValidEmail(email)
+    );
   }, [name, email]);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image file.");
+      const msg = "Please select a valid image file.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     const maxBytes = 2 * 1024 * 1024; // 2MB
     if (file.size > maxBytes) {
-      setError("Image is too large (max 2MB).");
+      const msg = "Image is too large (max 2MB).";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     const reader = new FileReader();
@@ -42,19 +56,32 @@ const Profile = () => {
     reader.readAsDataURL(file);
   };
 
-  const onSave = () => {
+  const onSave = async () => {
     setError("");
-    if (!canSave) {
-      setError("Please provide a valid name and email.");
+    if (!name.trim()) {
+      setError("Please enter your name.");
+      toast.error("Please enter your name.");
       return;
     }
-    updateCurrentUser({
-      name: name.trim(),
-      email: email.trim(),
-      avatar: avatarUrl,
-    });
-    setToast("Profile updated.");
-    setTimeout(() => setToast(""), 2500);
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address.");
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      await updateCurrentUser({
+        name: name.trim(),
+        email: email.trim(),
+        avatar: avatarUrl,
+      });
+    } catch {
+      // API interceptor shows the error toast; keep inline hint too.
+      setError("Could not save changes. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const onRemovePhoto = () => {
@@ -160,10 +187,12 @@ const Profile = () => {
             <div className="md:col-span-2 flex justify-end mt-2">
               <button
                 onClick={onSave}
-                disabled={!canSave}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                disabled={!canSave || isSaving}
+                aria-busy={isSaving}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 inline-flex items-center gap-2"
               >
-                Save Changes
+                {isSaving && <Spinner size={16} className="text-white" />}
+                {isSaving ? "Saving…" : "Save Changes"}
               </button>
             </div>
           </div>
@@ -189,14 +218,6 @@ const Profile = () => {
         )}
         {error && <p className="mt-3 text-red-500 text-sm">{error}</p>}
       </div>
-
-      {toast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50">
-          <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-sm text-slate-700 dark:text-slate-200">{toast}</span>
-          </div>
-        </div>
-      )}
 
       {/* Danger Zone */}
       {isSelf && (
@@ -244,15 +265,23 @@ const Profile = () => {
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => {
-                  setConfirmDelete(false);
-                  removeUser(currentUser.id);
-                  setToast("Account deleted.");
-                  setTimeout(() => setToast(""), 2500);
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white inline-flex items-center gap-2 disabled:opacity-60"
+                disabled={isDeleting}
+                onClick={async () => {
+                  if (isDeleting) return;
+                  setIsDeleting(true);
+                  try {
+                    await removeUser(currentUser.id);
+                    setConfirmDelete(false);
+                  } catch {
+                    // API interceptor shows the error toast.
+                  } finally {
+                    setIsDeleting(false);
+                  }
                 }}
               >
-                Delete
+                {isDeleting && <Spinner size={16} className="text-white" />}
+                {isDeleting ? "Deleting…" : "Delete"}
               </button>
             </div>
           </div>

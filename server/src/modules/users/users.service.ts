@@ -1,6 +1,9 @@
 import { BaseService } from "../../core/BaseService";
 import { UpdateProfileDto } from "./users.schemas";
 import { AppError } from "../../utils/AppError";
+import { audit } from "../../utils/audit";
+
+type Role = "ADMIN" | "MEMBER";
 
 export class UsersService extends BaseService {
   async getProfile(userId: string) {
@@ -64,5 +67,24 @@ export class UsersService extends BaseService {
 
     if (!user) throw new AppError(404, "User not found");
     return user;
+  }
+
+  async deleteUser(actorId: string, actorRole: Role, targetUserId: string) {
+    const isSelf = actorId === targetUserId;
+    const isAdmin = actorRole === "ADMIN";
+    if (!isSelf && !isAdmin) {
+      throw new AppError(403, "Only admins can delete other users");
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AppError(404, "User not found");
+
+    // Prisma schema cascades on Message/DM/TrackMember/RefreshToken.
+    // Tasks are SET NULL on the assignee.
+    await this.prisma.user.delete({ where: { id: targetUserId } });
+    audit("user.delete", { actorId, targetId: targetUserId });
   }
 }

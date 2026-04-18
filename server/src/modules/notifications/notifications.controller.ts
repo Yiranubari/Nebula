@@ -30,4 +30,9 @@ export class NotificationsController extends BaseController {
     );
     this.noContent(res);
   };
+
+  markAllRead = async (req: Request, res: Response) => {
+    const result = await this.notificationsService.markAllRead(req.user!.id);
+    this.ok(res, result);
+  };
 }

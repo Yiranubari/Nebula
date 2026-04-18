@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import { env } from "./config/env";
 import { globalRateLimiter } from "./middleware/rateLimit.middleware";
 import { errorMiddleware } from "./middleware/error.middleware";
+import { requestId } from "./middleware/requestId.middleware";
 import authRoutes from "./modules/auth/auth.routes";
 import userRoutes from "./modules/users/users.routes";
 import taskRoutes from "./modules/tasks/tasks.routes";
@@ -17,11 +18,13 @@ import uploadRoutes from "./modules/uploads/uploads.routes";
 export function createApp() {
   const app = express();
 
+  app.use(requestId);
   app.use(helmet());
   app.use(
     cors({
       origin: env.CLIENT_URL,
       credentials: true,
+      exposedHeaders: ["X-Request-Id"],
     })
   );
   app.use(express.json());

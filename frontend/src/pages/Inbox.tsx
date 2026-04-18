@@ -288,11 +288,7 @@ const Inbox: React.FC = () => {
           url,
         });
       }
-      const id = sendDirectMessage(selectedUser.id, trimmed, atts);
-      // Simulate occasional failure to showcase resend; ~15% chance
-      if (Math.random() < 0.15) {
-        setTimeout(() => setDirectMessageStatus(id, "failed"), 200);
-      }
+      sendDirectMessage(selectedUser.id, trimmed, atts);
       setText("");
       setPendingFiles([]);
       setTimeout(() => inputRef.current?.focus(), 0);
@@ -345,10 +341,7 @@ const Inbox: React.FC = () => {
             type: preferredMime,
             url,
           };
-          const id = sendDirectMessage(selectedUser.id, "", [att]);
-          if (Math.random() < 0.15) {
-            setTimeout(() => setDirectMessageStatus(id, "failed"), 200);
-          }
+          sendDirectMessage(selectedUser.id, "", [att]);
           setIsRecording(false);
           setRecSeconds(0);
           recordingChunksRef.current = [];
@@ -402,7 +395,14 @@ const Inbox: React.FC = () => {
           <div className="max-h-[60vh] overflow-y-auto">
             {conversations.length === 0 && (
               <div className="p-4 text-sm text-slate-500 dark:text-slate-400">
-                No conversations yet.
+                <p className="font-medium text-slate-700 dark:text-slate-200">
+                  No conversations yet
+                </p>
+                <p className="mt-1">
+                  Head over to{" "}
+                  <span className="font-medium">Members</span> and start a direct
+                  message with a teammate.
+                </p>
               </div>
             )}
             {conversations.map((c) => {
@@ -849,7 +849,15 @@ const Inbox: React.FC = () => {
                         {m.status === "failed" && (
                           <button
                             className="ml-2 text-[11px] underline"
-                            onClick={() => setDirectMessageStatus(m.id, "sent")}
+                            onClick={() => {
+                              if (!selectedUser) return;
+                              sendDirectMessage(
+                                selectedUser.id,
+                                m.content || "",
+                                m.attachments
+                              );
+                              setDirectMessageStatus(m.id, "sent");
+                            }}
                           >
                             Resend
                           </button>
@@ -957,6 +965,11 @@ const Inbox: React.FC = () => {
                   </span>
                 ))}
               </div>
+            )}
+            {selectedUser && (
+              <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
+                Enter to send · Shift+Enter for a new line
+              </p>
             )}
           </div>
         </div>

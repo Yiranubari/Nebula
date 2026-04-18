@@ -57,15 +57,16 @@ export const registerPresenceHandlers = (io: NebServer, socket: NebSocket) => {
   // Handle disconnect
   socket.on("disconnect", () => {
     const presence = presenceStore.get(userId);
-    if (presence) {
-      presence.connections.delete(socket.id);
+    if (!presence) return;
+    presence.connections.delete(socket.id);
 
-      // Only go offline when all connections for this user drop
-      if (presence.connections.size === 0) {
-        presence.status = "offline";
-        presence.lastActive = new Date().toISOString();
-        broadcastPresence("offline");
-      }
+    // Only go offline when all connections for this user drop
+    if (presence.connections.size === 0) {
+      presence.status = "offline";
+      presence.lastActive = new Date().toISOString();
+      broadcastPresence("offline");
+      // Remove the entry entirely to avoid unbounded map growth for ephemeral users.
+      presenceStore.delete(userId);
     }
   });
 };

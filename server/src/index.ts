@@ -4,12 +4,12 @@ import { createApp } from "./app";
 import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { prisma } from "./db/prisma";
-import { initSocket } from "./realtime/socket";
+import { initSocket, getIO } from "./realtime/socket";
 
 async function main() {
   const app = createApp();
   const server = http.createServer(app);
-  
+
   initSocket(server);
 
   try {
@@ -23,10 +23,36 @@ async function main() {
     logger.info(`Server listening on port ${env.PORT}`);
   });
 
+  let shuttingDown = false;
   const shutdown = async (signal: string) => {
-    logger.info(`${signal} received — shutting down`);
-    server.close();
-    await prisma.$disconnect();
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info({ signal }, "Shutting down");
+
+    // Close Socket.IO — stops accepting new WS connections and disconnects existing ones
+    try {
+      await new Promise<void>((resolve) => {
+        try {
+          getIO().close(() => resolve());
+        } catch {
+          resolve();
+        }
+      });
+    } catch (err) {
+      logger.warn({ err }, "Error closing Socket.IO");
+    }
+
+    // Close the HTTP server (stop accepting new requests, drain in-flight)
+    await new Promise<void>((resolve) => {
+      server.close(() => resolve());
+    });
+
+    try {
+      await prisma.$disconnect();
+    } catch (err) {
+      logger.warn({ err }, "Error disconnecting Prisma");
+    }
+
     process.exit(0);
   };
 
@@ -35,6 +61,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  logger.fatal({ err }, "Fatal startup error");
   process.exit(1);
 });

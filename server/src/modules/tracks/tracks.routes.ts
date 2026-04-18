@@ -4,7 +4,11 @@ import { TracksService } from "./tracks.service";
 import { prisma } from "../../db/prisma";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { validate } from "../../middleware/validate.middleware";
-import { createTrackSchema, addMemberSchema } from "./tracks.schemas";
+import {
+  createTrackSchema,
+  addMemberSchema,
+  updateTrackSchema,
+} from "./tracks.schemas";
 import { protect } from "../auth/auth.middleware";
 
 const router = Router();
@@ -34,5 +38,13 @@ router.delete(
   "/:id/members/:userId",
   asyncHandler(tracksController.removeMember)
 );
+
+router.patch(
+  "/:id",
+  validate(updateTrackSchema, "body"),
+  asyncHandler(tracksController.renameTrack)
+);
+
+router.delete("/:id", asyncHandler(tracksController.deleteTrack));
 
 export default router;

@@ -40,7 +40,9 @@ const Notifications = () => {
         <div className="mb-4 flex justify-end">
           <button
             className="px-3 py-2 text-xs rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
-            onClick={() => markAllNotificationsReadForUser(currentUser.id)}
+            onClick={() => {
+              markAllNotificationsReadForUser(currentUser.id).catch(() => {});
+            }}
             title="Mark all as read"
           >
             Mark all as read
@@ -48,7 +50,15 @@ const Notifications = () => {
         </div>
       )}
       {sorted.length === 0 ? (
-        <p className="text-slate-500 dark:text-slate-400">No notifications.</p>
+        <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center">
+          <p className="text-slate-700 dark:text-slate-200 font-medium">
+            You're all caught up
+          </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            New mentions, reactions, task assignments and approval requests will
+            show up here.
+          </p>
+        </div>
       ) : (
         <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -202,7 +212,7 @@ const Notifications = () => {
                       <button
                         className="ml-2 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-xs"
                         onClick={() => {
-                          markNotificationRead(n.id);
+                          markNotificationRead(n.id).catch(() => {});
                           navigate({
                             pathname: "/chat",
                             search: `?trackId=${encodeURIComponent(
@@ -217,7 +227,9 @@ const Notifications = () => {
                   {!n.read && (
                     <button
                       className="ml-2 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-xs"
-                      onClick={() => markNotificationRead(n.id)}
+                      onClick={() => {
+                        markNotificationRead(n.id).catch(() => {});
+                      }}
                     >
                       Mark read
                     </button>
@@ -228,13 +240,17 @@ const Notifications = () => {
                       <div className="flex items-center gap-2">
                         <button
                           className="px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700 text-xs"
-                          onClick={() => approveTask(n.taskId)}
+                          onClick={() => {
+                            approveTask(n.taskId).catch(() => {});
+                          }}
                         >
                           Approve
                         </button>
                         <button
                           className="px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 text-xs"
-                          onClick={() => rejectTask(n.taskId)}
+                          onClick={() => {
+                            rejectTask(n.taskId).catch(() => {});
+                          }}
                         >
                           Reject
                         </button>

@@ -63,6 +63,23 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+const ConnectionBanner = () => {
+  const { isAuthenticated } = useApp();
+  const { isConnected, isReconnecting } = useSocket();
+  if (!isAuthenticated || isConnected) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed top-0 inset-x-0 z-[60] bg-amber-500 text-white text-xs md:text-sm py-1.5 px-4 text-center shadow"
+    >
+      {isReconnecting
+        ? "Reconnecting to Nebula… real-time features are paused."
+        : "You appear offline. Messages and updates may not sync."}
+    </div>
+  );
+};
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -235,6 +252,7 @@ function App() {
             <CallProvider>
               <HashRouter>
                 <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
+                <ConnectionBanner />
                 <Layout>
                   <ErrorBoundary>
                     <Routes>

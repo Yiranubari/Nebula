@@ -624,9 +624,14 @@ const Chat = () => {
           />
           <button
             className="px-3 py-2 rounded bg-slate-800 text-white text-sm hover:bg-slate-900"
-            onClick={() => {
-              renameTrack(activeTrackId, renameValue);
-              setRenaming(false);
+            onClick={async () => {
+              try {
+                await renameTrack(activeTrackId, renameValue.trim());
+              } catch {
+                // context rolls back + toast shown via interceptor
+              } finally {
+                setRenaming(false);
+              }
             }}
             disabled={!renameValue.trim()}
           >
@@ -644,15 +649,22 @@ const Chat = () => {
       {confirmDelete && currentUser.role === "ADMIN" && (
         <div className="px-6 py-2 bg-red-50 border-b border-red-100 flex items-center gap-2">
           <span className="text-sm text-red-700">
-            Delete this track? This cannot be undone.
+            Delete <strong>#{tracks.find((t) => t.id === activeTrackId)?.name || "this track"}</strong>?
+            All messages and pinned items will be permanently removed. This cannot be undone.
           </span>
           <button
             className="ml-auto px-3 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700"
-            onClick={() => {
-              deleteTrack(activeTrackId);
-              const next = tracks[0]?.id || "track-general";
-              setActiveTrackId(next);
-              setConfirmDelete(false);
+            onClick={async () => {
+              const toDelete = activeTrackId;
+              try {
+                await deleteTrack(toDelete);
+                const next = tracks.find((t) => t.id !== toDelete)?.id || "track-general";
+                setActiveTrackId(next);
+              } catch {
+                // context rolls back + toast shown via interceptor
+              } finally {
+                setConfirmDelete(false);
+              }
             }}
           >
             Delete
@@ -683,9 +695,12 @@ const Chat = () => {
                     type="checkbox"
                     checked={isMember}
                     onChange={(e) => {
-                      if (e.target.checked)
-                        addMemberToTrack(activeTrackId, u.id);
-                      else removeMemberFromTrack(activeTrackId, u.id);
+                      const fn = e.target.checked
+                        ? addMemberToTrack(activeTrackId, u.id)
+                        : removeMemberFromTrack(activeTrackId, u.id);
+                      fn.catch(() => {
+                        // interceptor already surfaced the error toast
+                      });
                     }}
                   />
                   <Avatar
@@ -859,8 +874,8 @@ const Chat = () => {
           />
           <button
             className="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700"
-            onClick={() => {
-              const created = addTrack(newTrackName);
+            onClick={async () => {
+              const created = await addTrack(newTrackName.trim());
               if (created) {
                 setActiveTrackId(created.id);
                 setNewTrackName("");
@@ -1664,7 +1679,9 @@ const Chat = () => {
               {isRecording ? <Square size={18} /> : <Mic size={18} />}
             </button>
             {isRecording && (
-              <span className="text-[11px] text-red-600 font-medium">
+              <span className="inline-flex items-center gap-1 text-[11px] text-red-600 font-medium">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                Recording{" "}
                 {String(Math.floor(recSeconds / 60)).padStart(2, "0")}:
                 {String(recSeconds % 60).padStart(2, "0")}
               </span>
@@ -1723,7 +1740,7 @@ const Chat = () => {
           </div>
         )}
         <p className="max-w-4xl mx-auto text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-          Type @ to mention a person or track
+          Type @ to mention a person or track · Enter to send · Shift+Enter for a new line
         </p>
         {typingOthers.length > 0 && (
           <p className="max-w-4xl mx-auto text-[11px] text-slate-500 dark:text-slate-400 mt-1">

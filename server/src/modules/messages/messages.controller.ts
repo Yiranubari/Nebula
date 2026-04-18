@@ -49,4 +49,31 @@ export class MessagesController extends BaseController {
     );
     this.noContent(res);
   };
+
+  pinMessage = async (req: Request, res: Response) => {
+    const message = await this.messagesService.setPinned(
+      req.user!.id,
+      req.user!.role,
+      req.params.messageId as string,
+      req.body.pinned
+    );
+    this.ok(res, message);
+  };
+
+  reactMessage = async (req: Request, res: Response) => {
+    const message = await this.messagesService.toggleReaction(
+      req.user!.id,
+      req.params.messageId as string,
+      req.body.emoji
+    );
+    this.ok(res, message);
+  };
+
+  markRead = async (req: Request, res: Response) => {
+    const message = await this.messagesService.markRead(
+      req.user!.id,
+      req.params.messageId as string
+    );
+    this.ok(res, message);
+  };
 }

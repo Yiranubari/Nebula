@@ -16,6 +16,8 @@ router.use(protect);
 
 router.get("/", asyncHandler(controller.getNotifications));
 
+router.patch("/read-all", asyncHandler(controller.markAllRead));
+
 router.patch(
   "/:id",
   validate(updateNotificationSchema, "body"),

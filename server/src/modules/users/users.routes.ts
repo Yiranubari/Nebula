@@ -24,5 +24,6 @@ router.patch(
 
 router.get("/", asyncHandler(usersController.getAllUsers));
 router.get("/:id", asyncHandler(usersController.getUser));
+router.delete("/:id", asyncHandler(usersController.deleteUser));
 
 export default router;

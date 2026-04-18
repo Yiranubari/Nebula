@@ -1,6 +1,9 @@
 import { BaseService } from "../../core/BaseService";
-import { CreateTrackDto } from "./tracks.schemas";
+import { CreateTrackDto, UpdateTrackDto } from "./tracks.schemas";
 import { AppError } from "../../utils/AppError";
+import { audit } from "../../utils/audit";
+
+type Role = "ADMIN" | "MEMBER";
 
 export class TracksService extends BaseService {
   async createTrack(userId: string, data: CreateTrackDto) {
@@ -92,5 +95,45 @@ export class TracksService extends BaseService {
         },
       },
     });
+  }
+
+  async renameTrack(
+    trackId: string,
+    userId: string,
+    role: Role,
+    data: UpdateTrackDto
+  ) {
+    // Must be a member to see it, admin to rename
+    await this.getTrackById(trackId, userId);
+    if (role !== "ADMIN") {
+      throw new AppError(403, "Only admins can rename a track");
+    }
+
+    const track = await this.prisma.track.update({
+      where: { id: trackId },
+      data: { name: data.name },
+      include: {
+        members: {
+          include: {
+            user: { select: { id: true, name: true, avatar: true } },
+          },
+        },
+      },
+    });
+    audit("track.rename", { actorId: userId, targetId: trackId, name: data.name });
+    return track;
+  }
+
+  async deleteTrack(trackId: string, userId: string, role: Role) {
+    await this.getTrackById(trackId, userId);
+    if (role !== "ADMIN") {
+      throw new AppError(403, "Only admins can delete a track");
+    }
+
+    // Cascade deletes TrackMember + Message rows via schema onDelete: Cascade
+    await this.prisma.track.delete({
+      where: { id: trackId },
+    });
+    audit("track.delete", { actorId: userId, targetId: trackId });
   }
 }

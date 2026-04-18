@@ -42,4 +42,23 @@ export class TracksController extends BaseController {
     );
     this.noContent(res);
   };
+
+  renameTrack = async (req: Request, res: Response) => {
+    const track = await this.tracksService.renameTrack(
+      req.params.id as string,
+      req.user!.id,
+      req.user!.role,
+      req.body
+    );
+    this.ok(res, track);
+  };
+
+  deleteTrack = async (req: Request, res: Response) => {
+    await this.tracksService.deleteTrack(
+      req.params.id as string,
+      req.user!.id,
+      req.user!.role
+    );
+    this.noContent(res);
+  };
 }

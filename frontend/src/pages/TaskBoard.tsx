@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useApp } from "../context/AppContext";
 import { Task, TaskStatus, Priority } from "../types";
 import { MoreHorizontal, Calendar, Clock, ArrowRight } from "lucide-react";
@@ -26,7 +27,8 @@ const TaskBoard = () => {
   const [showUndo, setShowUndo] = useState(false);
   const undoTimerRef = useRef<number | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
-  const [updatedToast, setUpdatedToast] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [confirmSubmitTaskId, setConfirmSubmitTaskId] = useState<string | null>(
     null
   );
@@ -229,13 +231,17 @@ const TaskBoard = () => {
                         <div className="ml-auto flex items-center gap-2">
                           <button
                             className="px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700"
-                            onClick={() => approveTask(n.taskId)}
+                            onClick={() => {
+                              approveTask(n.taskId).catch(() => {});
+                            }}
                           >
                             Approve
                           </button>
                           <button
                             className="px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700"
-                            onClick={() => rejectTask(n.taskId)}
+                            onClick={() => {
+                              rejectTask(n.taskId).catch(() => {});
+                            }}
                           >
                             Reject
                           </button>
@@ -420,9 +426,11 @@ const TaskBoard = () => {
                               )
                             ) : (
                               <button
-                                onClick={() =>
-                                  updateTaskStatus(task.id, nextStatus)
-                                }
+                                onClick={() => {
+                                  updateTaskStatus(task.id, nextStatus).catch(
+                                    () => {}
+                                  );
+                                }}
                                 className="text-indigo-600 hover:bg-indigo-50 p-1 rounded transition-colors opacity-0 group-hover:opacity-100"
                                 title={`Move to ${nextStatus}`}
                               >
@@ -434,6 +442,7 @@ const TaskBoard = () => {
                             onClick={(e) => {
                               e.stopPropagation();
                               addTaskReminder(task.id);
+                              toast.success("Reminder queued.");
                             }}
                             title="Remind me/assignee"
                           >
@@ -445,8 +454,19 @@ const TaskBoard = () => {
                   })}
 
                 {tasks.filter((t) => t.status === col.id).length === 0 && (
-                  <div className="h-24 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-                    No tasks
+                  <div className="h-24 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs px-3 text-center">
+                    <span className="font-medium text-slate-500 dark:text-slate-400">
+                      Nothing here yet
+                    </span>
+                    {col.id === TaskStatus.TODO && currentUser.role === "ADMIN" ? (
+                      <span className="mt-0.5">
+                        Create one from the Admin panel.
+                      </span>
+                    ) : (
+                      <span className="mt-0.5">
+                        Tasks in this stage will appear here.
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -484,21 +504,24 @@ const TaskBoard = () => {
               </button>
               <button
                 className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => {
+                onClick={async () => {
                   const t = confirmTask;
                   setConfirmTask(null);
                   if (!t) return;
-                  // Delete and show undo toast
-                  deleteTask(t.id);
-                  setLastDeletedTask(t);
-                  setShowUndo(true);
-                  if (undoTimerRef.current)
-                    window.clearTimeout(undoTimerRef.current);
-                  undoTimerRef.current = window.setTimeout(() => {
-                    setShowUndo(false);
-                    setLastDeletedTask(null);
-                    undoTimerRef.current = null;
-                  }, 5000);
+                  try {
+                    await deleteTask(t.id);
+                    setLastDeletedTask(t);
+                    setShowUndo(true);
+                    if (undoTimerRef.current)
+                      window.clearTimeout(undoTimerRef.current);
+                    undoTimerRef.current = window.setTimeout(() => {
+                      setShowUndo(false);
+                      setLastDeletedTask(null);
+                      undoTimerRef.current = null;
+                    }, 5000);
+                  } catch {
+                    // context rolled the task back + interceptor toasted
+                  }
                 }}
               >
                 Delete
@@ -629,95 +652,137 @@ const TaskBoard = () => {
                 </select>
               </div>
             </div>
+            {editError && (
+              <p className="mt-3 text-sm text-red-500">{editError}</p>
+            )}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                onClick={() => setEditTask(null)}
+                onClick={() => {
+                  setEditTask(null);
+                  setEditError(null);
+                }}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
-                onClick={() => {
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-60"
+                disabled={isSavingEdit}
+                onClick={async () => {
                   if (!editTask) return;
-                  if (
-                    !editTask.title.trim() ||
-                    !editTask.description.trim() ||
-                    !editTask.assigneeId ||
-                    editTask.estimatedHours <= 0
-                  )
+                  if (!editTask.title.trim()) {
+                    setEditError("Please enter a title.");
                     return;
-                  updateTask(editTask);
-                  setEditTask(null);
-                  setUpdatedToast(true);
-                  setTimeout(() => setUpdatedToast(false), 3000);
+                  }
+                  if (!editTask.description.trim()) {
+                    setEditError("Please enter a description.");
+                    return;
+                  }
+                  if (!editTask.assigneeId) {
+                    setEditError("Please select an assignee.");
+                    return;
+                  }
+                  if (editTask.estimatedHours <= 0) {
+                    setEditError("Estimated hours must be positive.");
+                    return;
+                  }
+                  setEditError(null);
+                  setIsSavingEdit(true);
+                  try {
+                    await updateTask(editTask);
+                    setEditTask(null);
+                  } catch {
+                    // interceptor toasted the error
+                  } finally {
+                    setIsSavingEdit(false);
+                  }
                 }}
               >
-                Save
+                {isSavingEdit ? "Saving…" : "Save"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {updatedToast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50">
-          <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-sm text-slate-700 dark:text-slate-200">
-              Task updated.
-            </span>
-          </div>
-        </div>
-      )}
       {confirmSubmitTaskId && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50">
-          <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-sm text-slate-700 dark:text-slate-200">
-              Submit this task for approval?
-            </span>
-            <button
-              className="text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-slate-100 text-sm font-medium"
-              onClick={() => setConfirmSubmitTaskId(null)}
-            >
-              Cancel
-            </button>
-            <button
-              className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
-              onClick={() => {
-                const id = confirmSubmitTaskId;
-                setConfirmSubmitTaskId(null);
-                if (!id) return;
-                requestTaskApproval(id);
-              }}
-            >
-              Submit
-            </button>
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm submit for approval"
+        >
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setConfirmSubmitTaskId(null)}
+          />
+          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
+              Submit for approval?
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+              An admin will be notified to review this task before it can be
+              marked Done.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                onClick={() => setConfirmSubmitTaskId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={() => {
+                  const id = confirmSubmitTaskId;
+                  setConfirmSubmitTaskId(null);
+                  if (!id) return;
+                  requestTaskApproval(id);
+                }}
+              >
+                Submit
+              </button>
+            </div>
           </div>
         </div>
       )}
       {confirmApproveTaskId && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50">
-          <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-sm text-slate-700 dark:text-slate-200">
-              Approve this task to Done?
-            </span>
-            <button
-              className="text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-slate-100 text-sm font-medium"
-              onClick={() => setConfirmApproveTaskId(null)}
-            >
-              Cancel
-            </button>
-            <button
-              className="text-green-600 hover:text-green-700 text-sm font-medium"
-              onClick={() => {
-                const id = confirmApproveTaskId;
-                setConfirmApproveTaskId(null);
-                if (!id) return;
-                approveTask(id);
-              }}
-            >
-              Approve
-            </button>
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm approve task"
+        >
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setConfirmApproveTaskId(null)}
+          />
+          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
+              Approve this task?
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+              Moves the task to Done and closes the approval request.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                onClick={() => setConfirmApproveTaskId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => {
+                  const id = confirmApproveTaskId;
+                  setConfirmApproveTaskId(null);
+                  if (!id) return;
+                  approveTask(id).catch(() => {});
+                }}
+              >
+                Approve
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -734,7 +799,7 @@ const TaskBoard = () => {
                   window.clearTimeout(undoTimerRef.current);
                   undoTimerRef.current = null;
                 }
-                addTask(lastDeletedTask);
+                addTask(lastDeletedTask).catch(() => {});
                 setShowUndo(false);
                 setLastDeletedTask(null);
               }}

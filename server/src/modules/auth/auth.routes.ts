@@ -28,6 +28,7 @@ router.post(
 
 router.post(
   "/verify-otp",
+  strictRateLimiter,
   validate(verifyOtpSchema),
   asyncHandler(authController.verifyOtp)
 );
@@ -55,6 +56,7 @@ router.post(
 
 router.post(
   "/reset-password",
+  strictRateLimiter,
   validate(resetPasswordSchema),
   asyncHandler(authController.resetPassword)
 );

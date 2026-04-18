@@ -50,4 +50,12 @@ export class NotificationsService extends BaseService {
       where: { id: notificationId },
     });
   }
+
+  async markAllRead(userId: string) {
+    const { count } = await this.prisma.notification.updateMany({
+      where: { recipientId: userId, read: false },
+      data: { read: true },
+    });
+    return { updated: count };
+  }
 }

@@ -8,9 +8,21 @@ import {
 import { prisma } from "../../db/prisma";
 import { logger } from "../../config/logger";
 import { getIO } from "../socket";
+import { consume } from "../socketRateLimit";
 
 type NebServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type NebSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+
+const emitError = (socket: NebSocket, message: string) => {
+  socket.emit("error" as any, { message });
+};
+
+const isTrackMember = async (trackId: string, userId: string) => {
+  const member = await prisma.trackMember.findUnique({
+    where: { trackId_userId: { trackId, userId } },
+  });
+  return !!member;
+};
 
 export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   const userId = socket.data.userId;
@@ -18,14 +30,21 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   // ─── Send message ────────────────────────────────────────────────────────────
   socket.on("message:send", async (payload) => {
     try {
+      // Rate limit: burst 10, ~2 msgs/sec sustained
+      if (!consume(socket.id, "message:send", { capacity: 10, ratePerSec: 2 })) {
+        emitError(socket, "You're sending messages too quickly. Slow down.");
+        return;
+      }
+
       const { trackId, content, parentId, attachments } = payload;
 
-      // Verify membership
-      const member = await prisma.trackMember.findUnique({
-        where: { trackId_userId: { trackId, userId } },
-      });
-      if (!member) {
-        socket.emit("message:new" as any, { error: "Not a track member" } as any);
+      if (!trackId || !content) {
+        emitError(socket, "Missing trackId or content");
+        return;
+      }
+
+      if (!(await isTrackMember(trackId, userId))) {
+        emitError(socket, "Not a track member");
         return;
       }
 
@@ -47,14 +66,23 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
       getIO().to(`track:${trackId}`).emit("message:new", message as any);
     } catch (err) {
       logger.error({ err }, "chat:send error");
+      emitError(socket, "Could not send message");
     }
   });
 
   // ─── React to message ────────────────────────────────────────────────────────
   socket.on("message:react", async ({ messageId, emoji }) => {
     try {
-      const message = await prisma.message.findUnique({ where: { id: messageId } });
+      if (!messageId || !emoji) return;
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+      });
       if (!message) return;
+
+      if (!(await isTrackMember(message.trackId, userId))) {
+        emitError(socket, "Not a member of this track");
+        return;
+      }
 
       const reactions = (message.reactions as Record<string, string[]>) ?? {};
       const existing = reactions[emoji] ?? [];
@@ -73,7 +101,9 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
         include: { user: { select: { id: true, name: true, avatar: true } } },
       });
 
-      getIO().to(`track:${message.trackId}`).emit("message:updated", updated as any);
+      getIO()
+        .to(`track:${message.trackId}`)
+        .emit("message:updated", updated as any);
     } catch (err) {
       logger.error({ err }, "chat:react error");
     }
@@ -82,8 +112,16 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   // ─── Mark message as read ────────────────────────────────────────────────────
   socket.on("message:read", async ({ messageId }) => {
     try {
-      const message = await prisma.message.findUnique({ where: { id: messageId } });
+      if (!messageId) return;
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+      });
       if (!message) return;
+
+      if (!(await isTrackMember(message.trackId, userId))) {
+        emitError(socket, "Not a member of this track");
+        return;
+      }
 
       if (!message.readBy.includes(userId)) {
         const updated = await prisma.message.update({
@@ -91,7 +129,9 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
           data: { readBy: { push: userId } },
           include: { user: { select: { id: true, name: true, avatar: true } } },
         });
-        getIO().to(`track:${message.trackId}`).emit("message:updated", updated as any);
+        getIO()
+          .to(`track:${message.trackId}`)
+          .emit("message:updated", updated as any);
       }
     } catch (err) {
       logger.error({ err }, "chat:read error");
@@ -101,8 +141,27 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   // ─── Pin / unpin message ─────────────────────────────────────────────────────
   socket.on("message:pin", async ({ messageId, pinned }) => {
     try {
-      const message = await prisma.message.findUnique({ where: { id: messageId } });
+      if (!messageId) return;
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+      });
       if (!message) return;
+
+      if (!(await isTrackMember(message.trackId, userId))) {
+        emitError(socket, "Not a member of this track");
+        return;
+      }
+
+      // Only the author or an admin can pin/unpin
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+      const isAdmin = user?.role === "ADMIN";
+      if (!isAdmin && message.userId !== userId) {
+        emitError(socket, "Only admins or the author can pin this message");
+        return;
+      }
 
       const updated = await prisma.message.update({
         where: { id: messageId },
@@ -110,7 +169,9 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
         include: { user: { select: { id: true, name: true, avatar: true } } },
       });
 
-      getIO().to(`track:${message.trackId}`).emit("message:updated", updated as any);
+      getIO()
+        .to(`track:${message.trackId}`)
+        .emit("message:updated", updated as any);
     } catch (err) {
       logger.error({ err }, "chat:pin error");
     }

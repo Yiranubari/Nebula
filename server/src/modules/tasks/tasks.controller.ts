@@ -30,6 +30,7 @@ export class TasksController extends BaseController {
   updateTask = async (req: Request, res: Response) => {
     const task = await this.tasksService.updateTask(
       req.user!.id,
+      req.user!.role,
       req.params.id as string,
       req.body
     );
@@ -37,7 +38,11 @@ export class TasksController extends BaseController {
   };
 
   deleteTask = async (req: Request, res: Response) => {
-    await this.tasksService.deleteTask(req.params.id as string);
+    await this.tasksService.deleteTask(
+      req.user!.id,
+      req.user!.role,
+      req.params.id as string
+    );
     this.noContent(res);
   };
 }

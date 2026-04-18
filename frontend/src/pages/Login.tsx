@@ -4,6 +4,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, LogIn } from "lucide-react";
 import toast from "react-hot-toast";
 import Spinner from "../components/Spinner";
+import { api } from "../services/api";
 import {
   isProbablySlowNetwork,
   runWithDelayedSpinner,
@@ -11,8 +12,6 @@ import {
 } from "../services/uiLoading";
 
 const Login = () => {
-  const { login, verifyOtp } = useApp();
-  const { logout } = useApp(); // not strictly needed, but let's grab users as well if referenced, wait let's just do:
   const { login: doLogin, users, verifyOtp: doVerify } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,11 +37,22 @@ const Login = () => {
     // UI-only placeholder: backend/OAuth wiring comes later.
   };
 
+  const isValidEmail = (s: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSigningIn) return;
     if (!email.trim()) {
       toast.error("Please enter your email.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      toast.error("Please enter your password.");
       return;
     }
 
@@ -55,10 +65,7 @@ const Login = () => {
 
         const ok = await doLogin(email, password);
         if (!ok) {
-          // If the failure reason was "Please verify your email", let's move to OTP step.
-          // For now, if we get an error that implies unverified, ideally api intercepts it.
-          // Since the API error toast is handled globally, we just check if ok is false.
-          // If we want to jump to OTP, we can add a check if they are unverified. Let's just do standard response.
+          // Global axios interceptor surfaces the server's error message as a toast.
           return;
         }
         navigate("/dashboard");
@@ -66,16 +73,41 @@ const Login = () => {
     });
   };
 
-  const onSendOtp = (e: React.FormEvent) => {
+  const requestOtp = async (): Promise<boolean> => {
+    try {
+      await api.post("/auth/resend-otp", { email });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const onSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      toast.error("Please enter your email.");
+    if (!email.trim() || !isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
       return;
     }
-    // UI-only: pretend we sent an OTP.
-    setOtpDigits(Array.from({ length: 6 }, () => ""));
-    setMode("otp");
-    setTimeout(() => otpRefs.current?.[0]?.focus(), 0);
+    const ok = await requestOtp();
+    if (ok) {
+      toast.success(`Verification code sent to ${email}.`);
+      setOtpDigits(Array.from({ length: 6 }, () => ""));
+      setMode("otp");
+      setTimeout(() => otpRefs.current?.[0]?.focus(), 0);
+    }
+  };
+
+  const onResendOtp = async () => {
+    if (!email.trim() || !isValidEmail(email)) {
+      toast.error("Missing or invalid email.");
+      return;
+    }
+    const ok = await requestOtp();
+    if (ok) {
+      toast.success("New code sent. Check your email.");
+      setOtpDigits(Array.from({ length: 6 }, () => ""));
+      setTimeout(() => otpRefs.current?.[0]?.focus(), 0);
+    }
   };
 
   const onVerifyOtp = async (e: React.FormEvent) => {
@@ -358,10 +390,7 @@ const Login = () => {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setOtpDigits(Array.from({ length: 6 }, () => ""));
-                  setTimeout(() => otpRefs.current?.[0]?.focus(), 0);
-                }}
+                onClick={onResendOtp}
                 className="text-sm text-indigo-600 hover:text-indigo-700"
               >
                 Resend code

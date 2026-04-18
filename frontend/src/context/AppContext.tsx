@@ -367,71 +367,69 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateCurrentUser = async (updates: Partial<Pick<User, "name" | "email" | "avatar">>) => {
-    try {
-      const updated = await usersService.updateMe(updates);
-      setCurrentUser(updated);
-      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      toast.success("Profile updated");
-    } catch {}
+    const updated = await usersService.updateMe(updates);
+    setCurrentUser(updated);
+    setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+    toast.success("Profile updated");
   };
 
   const removeUser = async (userId: string) => {
-    try {
-      await usersService.delete(userId);
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-    } catch {}
+    await usersService.delete(userId);
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+    toast.success(userId === currentUser.id ? "Account deleted" : "Member removed");
   };
 
   // ─── Tasks ─────────────────────────────────────────────────────────────────
 
   const addTask = async (task: Omit<Task, "id" | "createdAt">) => {
-    try {
-      const created = await tasksService.create(task as any);
-      setTasks((prev) => [...prev, created as unknown as Task]);
-    } catch {}
+    const created = await tasksService.create(task as any);
+    setTasks((prev) => [...prev, created as unknown as Task]);
+    toast.success("Task created");
   };
 
   const updateTask = async (task: Task) => {
-    try {
-      const updated = await tasksService.update(task.id, task as any);
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated as unknown as Task : t)));
-    } catch {}
+    const updated = await tasksService.update(task.id, task as any);
+    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated as unknown as Task : t)));
+    toast.success("Task updated");
   };
 
   const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
-    try {
-      // For non-admin going to DONE → intercept and move to REVIEW
-      const isAdmin = currentUser.role === "ADMIN";
-      const finalStatus = (!isAdmin && status === TaskStatus.DONE) ? TaskStatus.REVIEW : status;
-      const updated = await tasksService.update(taskId, { status: finalStatus as any });
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
-    } catch {}
+    // For non-admin going to DONE → intercept and move to REVIEW
+    const isAdmin = currentUser.role === "ADMIN";
+    const finalStatus = (!isAdmin && status === TaskStatus.DONE) ? TaskStatus.REVIEW : status;
+    const updated = await tasksService.update(taskId, { status: finalStatus as any });
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
+    toast.success(`Moved to ${String(finalStatus).toLowerCase().replace("_", " ")}`);
   };
 
   const deleteTask = async (taskId: string) => {
+    // Optimistic delete with rollback on failure
+    const prev = tasks;
+    setTasks((list) => list.filter((t) => t.id !== taskId));
     try {
       await tasksService.delete(taskId);
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    } catch {}
+      toast.success("Task deleted");
+    } catch (err) {
+      setTasks(prev);
+      throw err;
+    }
   };
 
   const requestTaskApproval = (taskId: string) => {
     // Optimistic — the server creates the notification on status change
-    updateTaskStatus(taskId, TaskStatus.REVIEW);
+    updateTaskStatus(taskId, TaskStatus.REVIEW).catch(() => {});
   };
 
   const approveTask = async (taskId: string) => {
-    try {
-      const updated = await tasksService.update(taskId, { status: "DONE" as any });
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
-    } catch {}
+    const updated = await tasksService.update(taskId, { status: "DONE" as any });
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
+    toast.success("Task approved");
   };
 
   const rejectTask = async (taskId: string) => {
-    try {
-      const updated = await tasksService.update(taskId, { status: "REVIEW" as any });
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
-    } catch {}
+    const updated = await tasksService.update(taskId, { status: "REVIEW" as any });
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
+    toast.success("Task sent back to review");
   };
 
   const addTaskReminder = (_taskId: string, _forUserId?: string) => {
@@ -444,6 +442,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const track = await tracksService.create({ name });
       setTracks((prev) => [track, ...prev]);
+      toast.success(`Track #${track.name} created`);
       return track;
     } catch {
       return null;
@@ -451,55 +450,67 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addMemberToTrack = async (trackId: string, userId: string) => {
-    try {
-      await tracksService.addMember(trackId, userId);
-      setTracks((prev) =>
-        prev.map((t) =>
-          t.id === trackId && !t.members.includes(userId)
-            ? { ...t, members: [...t.members, userId] }
-            : t
-        )
-      );
-    } catch {}
+    await tracksService.addMember(trackId, userId);
+    setTracks((prev) =>
+      prev.map((t) =>
+        t.id === trackId && !t.members.includes(userId)
+          ? { ...t, members: [...t.members, userId] }
+          : t
+      )
+    );
+    const name = users.find((u) => u.id === userId)?.name ?? "Member";
+    toast.success(`${name} added to track`);
   };
 
   const removeMemberFromTrack = async (trackId: string, userId: string) => {
-    try {
-      await tracksService.removeMember(trackId, userId);
-      setTracks((prev) =>
-        prev.map((t) =>
-          t.id === trackId
-            ? { ...t, members: t.members.filter((id) => id !== userId) }
-            : t
-        )
-      );
-    } catch {}
+    await tracksService.removeMember(trackId, userId);
+    setTracks((prev) =>
+      prev.map((t) =>
+        t.id === trackId
+          ? { ...t, members: t.members.filter((id) => id !== userId) }
+          : t
+      )
+    );
+    const name = users.find((u) => u.id === userId)?.name ?? "Member";
+    toast.success(`${name} removed from track`);
   };
 
   const renameTrack = async (trackId: string, name: string) => {
-    // Optimistic update
+    // Optimistic update with rollback on failure
+    const prevTracks = tracks;
     setTracks((prev) =>
       prev.map((t) => (t.id === trackId ? { ...t, name } : t))
     );
     try {
       await tracksService.rename(trackId, name);
-    } catch {
-      // Rollback would go here — omitted for brevity
+      toast.success("Track renamed");
+    } catch (err) {
+      setTracks(prevTracks);
+      throw err;
     }
   };
 
   const deleteTrack = async (trackId: string) => {
-    setTracks((prev) => prev.filter((t) => t.id !== trackId));
+    const prevTracks = tracks;
+    setTracks((list) => list.filter((t) => t.id !== trackId));
     try {
       await tracksService.delete(trackId);
-    } catch {}
+      toast.success("Track deleted");
+    } catch (err) {
+      setTracks(prevTracks);
+      throw err;
+    }
   };
 
   // ─── Messages ─────────────────────────────────────────────────────────────
 
   const sendMessage = (content: string, trackId?: string, _attachments?: Attachment[]) => {
     const tid = trackId ?? tracks[0]?.id;
-    if (!tid || !socket) return;
+    if (!tid) return;
+    if (!socket?.connected) {
+      toast.error("You're offline. Message not sent.");
+      return;
+    }
     // Emit via socket — the server will broadcast message:new back
     socket.emit("message:send", {
       trackId: tid,
@@ -510,7 +521,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const sendReply = (parentId: string, content: string, trackId?: string, _attachments?: Attachment[]) => {
     const tid = trackId ?? tracks[0]?.id;
-    if (!tid || !socket) return;
+    if (!tid) return;
+    if (!socket?.connected) {
+      toast.error("You're offline. Reply not sent.");
+      return;
+    }
     socket.emit("message:send", {
       trackId: tid,
       content,
@@ -520,13 +535,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const pinMessage = (messageId: string, pinned: boolean) => {
-    if (!socket) return;
+    if (!socket?.connected) {
+      toast.error("You're offline. Try again once reconnected.");
+      return;
+    }
     socket.emit("message:pin", { messageId, pinned });
+    toast.success(pinned ? "Message pinned" : "Message unpinned");
   };
 
   const deleteMessage = (messageId: string) => {
     // Optimistic remove — server-side delete not yet wired to a socket event
     setMessages((prev) => prev.filter((m) => m.id !== messageId && m.parentId !== messageId));
+    toast.success("Message deleted");
   };
 
   const toggleReaction = (messageId: string, emoji: string, _userId: string) => {
@@ -545,7 +565,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const sendDirectMessage = (toUserId: string, content: string, _attachments?: Attachment[]): string => {
     const tempId = `temp-${Date.now()}`;
-    if (!socket) return tempId;
     // Optimistic append
     const optimistic: DirectMessage = {
       id: tempId,
@@ -555,10 +574,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       timestamp: new Date().toISOString(),
       reactions: {},
       readBy: [currentUser.id],
-      status: "sent",
+      status: socket?.connected ? "sent" : "failed",
       ...((_attachments?.length) ? { attachments: _attachments } : {}),
     };
     setDirectMessages((prev) => [...prev, optimistic]);
+    if (!socket?.connected) {
+      toast.error("You're offline. Message queued as failed — retry when reconnected.");
+      return tempId;
+    }
     socket.emit("dm:send", {
       toUserId,
       content,
@@ -596,19 +619,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ─── Notifications ─────────────────────────────────────────────────────────
 
   const markNotificationRead = async (id: string) => {
-    try {
-      await notificationsService.update(id, { read: true });
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      );
-    } catch {}
+    await notificationsService.update(id, { read: true });
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
   };
 
   const markAllNotificationsReadForUser = async (userId: string) => {
-    const targets = notifications.filter(
+    const hasUnread = notifications.some(
       (n) => (n.recipientId === userId || n.requesterId === userId) && !n.read
     );
-    await Promise.all(targets.map((n) => markNotificationRead(n.id)));
+    if (!hasUnread) return;
+    await notificationsService.markAllRead();
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.recipientId === userId || n.requesterId === userId
+          ? { ...n, read: true }
+          : n
+      )
+    );
+    toast.success("All notifications marked as read");
   };
 
   // ─── Presence / typing ─────────────────────────────────────────────────────

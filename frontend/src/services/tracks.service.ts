@@ -51,15 +51,11 @@ export const tracksService = {
   },
 
   rename: async (trackId: string, name: string): Promise<Track> => {
-    // NOTE: The backend tracks.routes does not yet expose PATCH /:id for renaming.
-    // This will be a no-op until that route is added.
-    // For now return the existing track shape optimistically.
-    const { data } = await api.get(`/tracks/${trackId}`);
+    const { data } = await api.patch(`/tracks/${trackId}`, { name });
     return normalise(data.track ?? data);
   },
 
   delete: async (trackId: string): Promise<void> => {
-    // NOTE: DELETE /tracks/:id not yet in routes; add when needed.
     await api.delete(`/tracks/${trackId}`);
   },
 

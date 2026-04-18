@@ -11,3 +11,9 @@ export const addMemberSchema = z.object({
 });
 
 export type AddMemberDto = z.infer<typeof addMemberSchema>;
+
+export const updateTrackSchema = z.object({
+  name: z.string().min(1, "Track name is required").max(64, "Track name is too long"),
+});
+
+export type UpdateTrackDto = z.infer<typeof updateTrackSchema>;

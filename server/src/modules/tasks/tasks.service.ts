@@ -1,7 +1,18 @@
 import { BaseService } from "../../core/BaseService";
 import { CreateTaskDto, UpdateTaskDto } from "./tasks.schemas";
 import { AppError } from "../../utils/AppError";
+import { audit } from "../../utils/audit";
 import { TaskStatus, Priority } from "@prisma/client";
+
+type Role = "ADMIN" | "MEMBER";
+
+// Fields an assignee can edit on their own task. Admins can edit everything.
+const ASSIGNEE_EDITABLE_FIELDS = new Set<keyof UpdateTaskDto>([
+  "status",
+  "description",
+  "labels",
+  "estimatedHours",
+]);
 
 export class TasksService extends BaseService {
   async createTask(userId: string, data: CreateTaskDto) {
@@ -51,13 +62,38 @@ export class TasksService extends BaseService {
     return task;
   }
 
-  async updateTask(userId: string, taskId: string, data: UpdateTaskDto) {
-    // Check if task exists first
+  async updateTask(
+    userId: string,
+    role: Role,
+    taskId: string,
+    data: UpdateTaskDto
+  ) {
     const existingTask = await this.getTaskById(taskId);
+
+    const isAdmin = role === "ADMIN";
+    const isAssignee = existingTask.assigneeId === userId;
+    if (!isAdmin && !isAssignee) {
+      throw new AppError(
+        403,
+        "Only the assignee or an admin can update this task"
+      );
+    }
+
+    // Non-admins can only modify a whitelist of fields
+    let patch: UpdateTaskDto = data;
+    if (!isAdmin) {
+      const filtered: UpdateTaskDto = {};
+      for (const key of Object.keys(data) as (keyof UpdateTaskDto)[]) {
+        if (ASSIGNEE_EDITABLE_FIELDS.has(key)) {
+          (filtered as any)[key] = (data as any)[key];
+        }
+      }
+      patch = filtered;
+    }
 
     const task = await this.prisma.task.update({
       where: { id: taskId },
-      data,
+      data: patch,
       include: { assignee: { select: { id: true, name: true, avatar: true } } },
     });
 
@@ -79,11 +115,12 @@ export class TasksService extends BaseService {
     return task;
   }
 
-  async deleteTask(taskId: string) {
+  async deleteTask(userId: string, role: Role, taskId: string) {
     await this.getTaskById(taskId);
-
-    await this.prisma.task.delete({
-      where: { id: taskId },
-    });
+    if (role !== "ADMIN") {
+      throw new AppError(403, "Only admins can delete a task");
+    }
+    await this.prisma.task.delete({ where: { id: taskId } });
+    audit("task.delete", { actorId: userId, targetId: taskId });
   }
 }

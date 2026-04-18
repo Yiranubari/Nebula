@@ -1,6 +1,10 @@
 import multer from "multer";
 
-// Store files in memory so we can stream them to Cloudinary without touching disk
+// Store files in memory so we can stream them to Cloudinary without touching disk.
+// NOTE: multer only inspects the client-supplied MIME type, which is trivially
+// spoofable. We rely on Cloudinary's server-side content sniffing + resource_type
+// to reject files whose actual contents don't match an allowed media type.
+// If we ever store uploads locally, add magic-byte validation here (e.g. file-type).
 const storage = multer.memoryStorage();
 
 export const upload = multer({

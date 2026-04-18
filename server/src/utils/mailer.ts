@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env";
+import { logger } from "../config/logger";
 
 const transporter = nodemailer.createTransport({
   host: env.SMTP_HOST,
@@ -10,10 +11,20 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendMail(to: string, subject: string, text: string, html?: string) {
+export async function sendMail(
+  to: string,
+  subject: string,
+  text: string,
+  html?: string
+) {
   if (!env.SMTP_USER || !env.SMTP_PASS) {
-    console.warn("SMTP credentials not provided. Mocking email send:");
-    console.log(`To: ${to}\nSubject: ${subject}\nBody: ${text}`);
+    // Development fallback: log the subject only. Do NOT log the body or
+    // OTP contents — those are sensitive and would leak into prod log sinks
+    // if this ever runs with verbose logging enabled.
+    logger.warn(
+      { to, subject },
+      "SMTP credentials not configured — email send skipped"
+    );
     return;
   }
 
@@ -25,7 +36,7 @@ export async function sendMail(to: string, subject: string, text: string, html?:
       text,
       html,
     });
-  } catch (error) {
-    console.error("Error sending email:", error);
+  } catch (err) {
+    logger.error({ err, to, subject }, "Failed to send email");
   }
 }

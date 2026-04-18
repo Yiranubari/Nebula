@@ -4,6 +4,7 @@ import { AppError } from "../../utils/AppError";
 import { hashPassword, comparePassword } from "../../utils/password";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../utils/jwt";
 import { sendMail } from "../../utils/mailer";
+import { audit } from "../../utils/audit";
 import type { User } from "@prisma/client";
 
 export class AuthService extends BaseService {
@@ -35,6 +36,7 @@ export class AuthService extends BaseService {
       `Your verification code is: ${otp}\n\nIt will expire in 15 minutes.`
     );
 
+    audit("auth.register", { actorId: user.id });
     return { message: "Account created successfully. Please check your email for the verification code.", user: this.sanitizeUser(user) };
   }
 
@@ -67,6 +69,7 @@ export class AuthService extends BaseService {
     const tokens = this.generateTokens(verifiedUser.id, verifiedUser.role);
     await this.storeRefreshToken(verifiedUser.id, tokens.refreshToken);
 
+    audit("auth.verify_otp", { actorId: verifiedUser.id });
     return { message: "Email verified successfully", user: this.sanitizeUser(verifiedUser), ...tokens };
   }
 
@@ -120,6 +123,7 @@ export class AuthService extends BaseService {
     const tokens = this.generateTokens(user.id, user.role);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
+    audit("auth.login", { actorId: user.id });
     return { user: this.sanitizeUser(user), ...tokens };
   }
 
@@ -154,36 +158,56 @@ export class AuthService extends BaseService {
       where: { email: data.email },
     });
 
-    if (!user) {
-      throw new AppError(400, "Invalid email or OTP");
-    }
+    // Return the same error shape whether the user exists or not to avoid
+    // leaking account existence.
+    const invalid = new AppError(400, "Invalid or expired OTP");
 
-    if (user.otp !== data.otp || !user.otpExpiresAt || user.otpExpiresAt < new Date()) {
-      throw new AppError(400, "Invalid or expired OTP");
+    if (!user) throw invalid;
+
+    // Password reset is only meaningful for verified accounts — this also
+    // prevents a signup-verification OTP from being reused to reset a
+    // never-verified account.
+    if (!user.isVerified) throw invalid;
+
+    if (
+      user.otp !== data.otp ||
+      !user.otpExpiresAt ||
+      user.otpExpiresAt < new Date()
+    ) {
+      throw invalid;
     }
 
     const passwordHash = await hashPassword(data.newPassword);
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        otp: null,
-        otpExpiresAt: null,
-      },
-    });
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          otp: null,
+          otpExpiresAt: null,
+        },
+      }),
+      // Invalidate all existing sessions so the reset also logs the user out
+      // of any compromised devices.
+      this.prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+    ]);
 
+    audit("auth.password_reset", { actorId: user.id });
     return { message: "Password has been reset successfully." };
   }
 
   async refresh(token: string) {
     try {
       const payload = verifyRefreshToken(token);
-      const session = await this.prisma.refreshToken.findUnique({
-        where: { token },
+
+      // Atomically consume the old token — if another concurrent request
+      // already rotated it, count will be 0 and we reject.
+      const { count } = await this.prisma.refreshToken.deleteMany({
+        where: { token, userId: payload.userId },
       });
-      if (!session) {
-        throw new Error("Invalid session");
+      if (count === 0) {
+        throw new Error("Refresh token already rotated or invalid");
       }
 
       const user = await this.prisma.user.findUnique({
@@ -192,9 +216,6 @@ export class AuthService extends BaseService {
       if (!user) {
         throw new Error("User not found");
       }
-
-      // Invalidate the old refresh token (rotation)
-      await this.prisma.refreshToken.delete({ where: { token } });
 
       const tokens = this.generateTokens(user.id, user.role);
       await this.storeRefreshToken(user.id, tokens.refreshToken);
@@ -206,9 +227,14 @@ export class AuthService extends BaseService {
   }
 
   async logout(token: string) {
+    const session = await this.prisma.refreshToken.findUnique({
+      where: { token },
+      select: { userId: true },
+    });
     await this.prisma.refreshToken.deleteMany({
       where: { token },
     });
+    if (session) audit("auth.logout", { actorId: session.userId });
   }
 
   private generateTokens(userId: string, role: string) {

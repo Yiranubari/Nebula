@@ -9,6 +9,8 @@ import {
   sendMessageSchema,
   editMessageSchema,
   getMessagesQuerySchema,
+  pinMessageSchema,
+  reactMessageSchema,
 } from "./messages.schemas";
 
 const router = Router();
@@ -37,5 +39,19 @@ router.patch(
 );
 
 router.delete("/:messageId", asyncHandler(messagesController.deleteMessage));
+
+router.patch(
+  "/:messageId/pin",
+  validate(pinMessageSchema, "body"),
+  asyncHandler(messagesController.pinMessage)
+);
+
+router.patch(
+  "/:messageId/react",
+  validate(reactMessageSchema, "body"),
+  asyncHandler(messagesController.reactMessage)
+);
+
+router.patch("/:messageId/read", asyncHandler(messagesController.markRead));
 
 export default router;

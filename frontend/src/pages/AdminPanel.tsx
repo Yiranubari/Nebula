@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import toast from "react-hot-toast";
 import { useApp } from "../context/AppContext";
 import { TaskStatus, Priority } from "../types";
 import { Check, BrainCircuit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Spinner from "../components/Spinner";
 
 const AdminPanel = () => {
   const { addTask, addUser, currentUser, users, removeUser } = useApp();
@@ -13,10 +15,11 @@ const AdminPanel = () => {
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [priority, setPriority] = useState<Priority>(Priority.MEDIUM);
   const [error, setError] = useState("");
+  const [memberError, setMemberError] = useState("");
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
-  const [createdToast, setCreatedToast] = useState(false);
-  const [memberToast, setMemberToast] = useState(false);
-  const [deleteToast, setDeleteToast] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [confirmUserId, setConfirmUserId] = useState<string | null>(null);
 
   // New member form state
@@ -24,6 +27,9 @@ const AdminPanel = () => {
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRole, setMemberRole] = useState<"ADMIN" | "MEMBER">("MEMBER");
   const [memberAvatar, setMemberAvatar] = useState("");
+
+  const isValidEmail = (s: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
   // Protect Route
   if (currentUser.role !== "ADMIN") {
@@ -37,7 +43,7 @@ const AdminPanel = () => {
     );
   }
 
-  const handleCreateTask = () => {
+  const handleCreateTask = async () => {
     setError("");
     // Basic validations
     if (!title.trim()) return setError("Please enter a task title.");
@@ -46,46 +52,59 @@ const AdminPanel = () => {
     if (!assigneeId) return setError("Please select an assignee.");
     if (!estimatedHours || estimatedHours <= 0)
       return setError("Estimated hours must be a positive number.");
+    if (isCreatingTask) return;
 
-    addTask({
-      id: `admin-${Date.now()}`,
-      title,
-      description,
-      status,
-      priority,
-      estimatedHours,
-      assigneeId,
-      createdAt: new Date().toISOString(),
-    });
-    setCreatedToast(true);
-    setTimeout(() => setCreatedToast(false), 3000);
-    navigate("/tasks");
+    setIsCreatingTask(true);
+    try {
+      await addTask({
+        id: `admin-${Date.now()}`,
+        title,
+        description,
+        status,
+        priority,
+        estimatedHours,
+        assigneeId,
+        createdAt: new Date().toISOString(),
+      });
+      navigate("/tasks");
+    } catch {
+      // API interceptor shows the server's error.
+    } finally {
+      setIsCreatingTask(false);
+    }
   };
 
   const handleAddMember = () => {
-    setError("");
-    if (!memberName.trim()) return setError("Please enter the member's name.");
-    if (!memberEmail.trim())
-      return setError("Please enter the member's email.");
-    const id = `u-${Date.now()}`;
-    const avatar =
-      memberAvatar.trim() ||
-      `https://picsum.photos/100/100?random=${Math.floor(
-        Math.random() * 1000
-      )}`;
-    addUser({
-      id,
-      name: memberName.trim(),
-      email: memberEmail.trim(),
-      role: memberRole,
-      avatar,
-    });
-    setMemberToast(true);
-    setTimeout(() => setMemberToast(false), 3000);
-    setMemberName("");
-    setMemberEmail("");
-    setMemberRole("MEMBER");
-    setMemberAvatar("");
+    setMemberError("");
+    if (!memberName.trim())
+      return setMemberError("Please enter the member's name.");
+    if (!memberEmail.trim() || !isValidEmail(memberEmail))
+      return setMemberError("Please enter a valid email address.");
+    if (isAddingMember) return;
+
+    setIsAddingMember(true);
+    try {
+      const id = `u-${Date.now()}`;
+      const avatar =
+        memberAvatar.trim() ||
+        `https://picsum.photos/100/100?random=${Math.floor(
+          Math.random() * 1000
+        )}`;
+      addUser({
+        id,
+        name: memberName.trim(),
+        email: memberEmail.trim(),
+        role: memberRole,
+        avatar,
+      });
+      toast.success(`${memberName.trim()} added to the team.`);
+      setMemberName("");
+      setMemberEmail("");
+      setMemberRole("MEMBER");
+      setMemberAvatar("");
+    } finally {
+      setIsAddingMember(false);
+    }
   };
 
   return (
@@ -138,9 +157,10 @@ const AdminPanel = () => {
               </div>
               <button
                 onClick={() => setConfirmUserId(u.id)}
-                className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
+                disabled={deletingUserId === u.id}
+                className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded disabled:opacity-60"
               >
-                Delete
+                {deletingUserId === u.id ? "Deleting…" : "Delete"}
               </button>
             </div>
           ))}
@@ -205,13 +225,18 @@ const AdminPanel = () => {
             />
           </div>
         </div>
-        {error && <p className="mt-3 text-red-500 text-sm">{error}</p>}
+        {memberError && (
+          <p className="mt-3 text-red-500 text-sm">{memberError}</p>
+        )}
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleAddMember}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+            disabled={isAddingMember}
+            aria-busy={isAddingMember}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-60"
           >
-            Add Member
+            {isAddingMember && <Spinner size={16} className="text-white" />}
+            {isAddingMember ? "Adding…" : "Add Member"}
           </button>
         </div>
       </div>
@@ -311,41 +336,19 @@ const AdminPanel = () => {
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleCreateTask}
-            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+            disabled={isCreatingTask}
+            aria-busy={isCreatingTask}
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-60"
           >
-            <Check size={16} />
-            Create Task
+            {isCreatingTask ? (
+              <Spinner size={16} className="text-white" />
+            ) : (
+              <Check size={16} />
+            )}
+            {isCreatingTask ? "Creating…" : "Create Task"}
           </button>
         </div>
       </div>
-      {/* No AI suggestions section: intentionally removed */}
-      {createdToast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50">
-          <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-sm text-slate-700 dark:text-slate-200">
-              Task created.
-            </span>
-          </div>
-        </div>
-      )}
-      {memberToast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50">
-          <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-sm text-slate-700 dark:text-slate-200">
-              Member added.
-            </span>
-          </div>
-        </div>
-      )}
-      {deleteToast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50">
-          <div className="bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-sm text-slate-700 dark:text-slate-200">
-              Member deleted.
-            </span>
-          </div>
-        </div>
-      )}
 
       {confirmUserId && (
         <div
@@ -374,17 +377,24 @@ const AdminPanel = () => {
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => {
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white inline-flex items-center gap-2 disabled:opacity-60"
+                disabled={!!deletingUserId}
+                onClick={async () => {
                   const id = confirmUserId;
                   setConfirmUserId(null);
                   if (!id) return;
-                  removeUser(id);
-                  setDeleteToast(true);
-                  setTimeout(() => setDeleteToast(false), 2500);
+                  setDeletingUserId(id);
+                  try {
+                    await removeUser(id);
+                  } catch {
+                    // API interceptor shows the error toast.
+                  } finally {
+                    setDeletingUserId(null);
+                  }
                 }}
               >
-                Delete
+                {deletingUserId && <Spinner size={16} className="text-white" />}
+                {deletingUserId ? "Deleting…" : "Delete"}
               </button>
             </div>
           </div>

@@ -26,4 +26,13 @@ export class UsersController extends BaseController {
     const user = await this.usersService.getUserById(req.params.id as string);
     this.ok(res, user);
   };
+
+  deleteUser = async (req: Request, res: Response) => {
+    await this.usersService.deleteUser(
+      req.user!.id,
+      req.user!.role,
+      req.params.id as string
+    );
+    this.noContent(res);
+  };
 }

@@ -8,6 +8,7 @@ import {
 import { prisma } from "../../db/prisma";
 import { logger } from "../../config/logger";
 import { getIO } from "../socket";
+import { consume } from "../socketRateLimit";
 
 type NebServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type NebSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -25,6 +26,27 @@ export const registerDmHandlers = (_io: NebServer, socket: NebSocket) => {
   // ─── Send DM ─────────────────────────────────────────────────────────────────
   socket.on("dm:send", async ({ toUserId, content, attachments }) => {
     try {
+      if (!consume(socket.id, "dm:send", { capacity: 10, ratePerSec: 2 })) {
+        socket.emit("error" as any, {
+          message: "You're sending messages too quickly. Slow down.",
+        });
+        return;
+      }
+
+      if (!toUserId || typeof toUserId !== "string") {
+        return;
+      }
+
+      // Validate recipient exists to avoid a misleading silent failure
+      const recipient = await prisma.user.findUnique({
+        where: { id: toUserId },
+        select: { id: true },
+      });
+      if (!recipient) {
+        socket.emit("error" as any, { message: "Recipient does not exist" });
+        return;
+      }
+
       const message = await prisma.directMessage.create({
         data: {
           content,

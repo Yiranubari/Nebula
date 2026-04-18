@@ -9,19 +9,21 @@ import {
 import { verifyAccessToken } from "../utils/jwt";
 import { prisma } from "../db/prisma";
 import { logger } from "../config/logger";
+import { env } from "../config/env";
 import { registerPresenceHandlers } from "./handlers/presence.handler";
 import { registerTypingHandlers } from "./handlers/typing.handler";
 import { registerChatHandlers } from "./handlers/chat.handler";
 import { registerDmHandlers } from "./handlers/dm.handler";
 import { registerReactionHandlers } from "./handlers/reaction.handler";
 import { registerHuddleHandlers } from "./handlers/huddle.handler";
+import { releaseSocket } from "./socketRateLimit";
 
 let io: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
 export const initSocket = (httpServer: http.Server) => {
   io = new Server(httpServer, {
     cors: {
-      origin: "*", // scoped to CLIENT_URL in production
+      origin: env.CLIENT_URL,
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -83,6 +85,7 @@ export const initSocket = (httpServer: http.Server) => {
     registerHuddleHandlers(io, socket);
 
     socket.on("disconnect", () => {
+      releaseSocket(socket.id);
       logger.info(`User disconnected: ${userName} (${userId})`);
     });
   });

@@ -2,6 +2,8 @@ import { BaseService } from "../../core/BaseService";
 import { SendMessageDto, EditMessageDto } from "./messages.schemas";
 import { AppError } from "../../utils/AppError";
 
+type Role = "ADMIN" | "MEMBER";
+
 export class MessagesService extends BaseService {
   async sendMessage(userId: string, trackId: string, data: SendMessageDto) {
     // Check if user is in track
@@ -24,7 +26,7 @@ export class MessagesService extends BaseService {
         userId,
         trackId,
         parentId: data.parentId || null,
-        attachments: data.attachments || null,
+        ...(data.attachments ? { attachments: data.attachments } : {}),
         readBy: [userId], // author logically has read their own message
       },
       include: {
@@ -105,6 +107,85 @@ export class MessagesService extends BaseService {
 
     await this.prisma.message.delete({
       where: { id: messageId },
+    });
+  }
+
+  private async assertTrackMember(trackId: string, userId: string) {
+    const member = await this.prisma.trackMember.findUnique({
+      where: { trackId_userId: { trackId, userId } },
+    });
+    if (!member) {
+      throw new AppError(403, "You must be a member of the track");
+    }
+  }
+
+  async setPinned(
+    userId: string,
+    role: Role,
+    messageId: string,
+    pinned: boolean
+  ) {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    if (!message) throw new AppError(404, "Message not found");
+
+    await this.assertTrackMember(message.trackId, userId);
+    if (role !== "ADMIN" && message.userId !== userId) {
+      throw new AppError(403, "Only admins or the author can pin this message");
+    }
+
+    return this.prisma.message.update({
+      where: { id: messageId },
+      data: { pinned },
+      include: {
+        user: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+  }
+
+  async toggleReaction(userId: string, messageId: string, emoji: string) {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    if (!message) throw new AppError(404, "Message not found");
+
+    await this.assertTrackMember(message.trackId, userId);
+
+    const reactions = (message.reactions as Record<string, string[]>) ?? {};
+    const existing = reactions[emoji] ?? [];
+    if (existing.includes(userId)) {
+      reactions[emoji] = existing.filter((id) => id !== userId);
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+    } else {
+      reactions[emoji] = [...existing, userId];
+    }
+
+    return this.prisma.message.update({
+      where: { id: messageId },
+      data: { reactions },
+      include: {
+        user: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+  }
+
+  async markRead(userId: string, messageId: string) {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    if (!message) throw new AppError(404, "Message not found");
+
+    await this.assertTrackMember(message.trackId, userId);
+
+    if (message.readBy.includes(userId)) return message;
+
+    return this.prisma.message.update({
+      where: { id: messageId },
+      data: { readBy: { push: userId } },
+      include: {
+        user: { select: { id: true, name: true, avatar: true } },
+      },
     });
   }
 }

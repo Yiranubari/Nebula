@@ -23,4 +23,9 @@ export const notificationsService = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/notifications/${id}`);
   },
+
+  markAllRead: async (): Promise<{ updated: number }> => {
+    const { data } = await api.patch("/notifications/read-all");
+    return data;
+  },
 };
