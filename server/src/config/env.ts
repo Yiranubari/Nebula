@@ -21,4 +21,11 @@ export const env = cleanEnv(process.env, {
   SMTP_USER: str({ default: "" }),
   SMTP_PASS: str({ default: "" }),
   SMTP_FROM: str({ default: "noreply@nebula.com" }),
+  // Resend (HTTP email API) — preferred on hosts that block outbound SMTP
+  // (Render, Vercel, etc.). When set, the mailer uses Resend and ignores
+  // the SMTP_* variables. Leave empty to use SMTP (good for local dev).
+  RESEND_API_KEY: str({ default: "" }),
+  // Sender identity used by Resend. Takes precedence over SMTP_FROM when
+  // Resend is in use. Format: "Name <email@verified-domain>".
+  EMAIL_FROM: str({ default: "" }),
 });

@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && cp -r src/assets dist/assets",
+    "build": "prisma generate && tsc && cp -r src/assets dist/assets",
     "start": "node dist/index.js",
+    "db:deploy": "prisma migrate deploy",
+    "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

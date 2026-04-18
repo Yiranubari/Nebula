@@ -9,7 +9,7 @@ import {
 import { verifyAccessToken } from "../utils/jwt";
 import { prisma } from "../db/prisma";
 import { logger } from "../config/logger";
-import { env } from "../config/env";
+import { isAllowedOrigin } from "../config/cors";
 import { registerPresenceHandlers } from "./handlers/presence.handler";
 import { registerTypingHandlers } from "./handlers/typing.handler";
 import { registerChatHandlers } from "./handlers/chat.handler";
@@ -23,7 +23,10 @@ let io: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, So
 export const initSocket = (httpServer: http.Server) => {
   io = new Server(httpServer, {
     cors: {
-      origin: env.CLIENT_URL,
+      origin: (origin, cb) => {
+        if (isAllowedOrigin(origin)) return cb(null, true);
+        cb(new Error(`Origin ${origin} is not allowed by CORS`));
+      },
       methods: ["GET", "POST"],
       credentials: true,
     },

@@ -60,11 +60,7 @@ export class AuthController extends BaseController {
       await this.authService.logout(token);
     }
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
+    res.clearCookie("refreshToken", this.refreshCookieOptions());
     this.ok(res, { message: "Logged out successfully" });
   };
 
@@ -87,11 +83,29 @@ export class AuthController extends BaseController {
     this.ok(res, { message, user, accessToken });
   };
 
+  /**
+   * Cookie options that match the current environment.
+   *
+   *   - In **production** we assume the frontend and backend live on
+   *     different origins (e.g. Vercel + Railway), so we need
+   *     `SameSite=None` + `Secure` for the browser to attach the
+   *     refresh-token cookie on cross-site XHRs.
+   *   - In **development** both run on `localhost:*` which is same-site, so
+   *     `SameSite=Lax` is fine and works without HTTPS.
+   */
+  private refreshCookieOptions() {
+    const isProd = process.env.NODE_ENV === "production";
+    return {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: (isProd ? "none" : "lax") as "none" | "lax",
+      path: "/",
+    };
+  }
+
   private setRefreshTokenCookie(res: Response, token: string) {
     res.cookie("refreshToken", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      ...this.refreshCookieOptions(),
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
   }

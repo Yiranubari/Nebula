@@ -3,6 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env";
+import { isAllowedOrigin } from "./config/cors";
 import { globalRateLimiter } from "./middleware/rateLimit.middleware";
 import { errorMiddleware } from "./middleware/error.middleware";
 import { requestId } from "./middleware/requestId.middleware";
@@ -18,11 +19,25 @@ import uploadRoutes from "./modules/uploads/uploads.routes";
 export function createApp() {
   const app = express();
 
+  // When running behind a reverse proxy / load balancer (Railway, Render,
+  // Fly, Vercel, Nginx, …) we need Express to honour X-Forwarded-* headers
+  // so `req.ip` is the real client (not the proxy), cookies with `secure`
+  // work correctly, and rate limits bucket per user rather than per proxy.
+  // `1` trusts a single hop in front of us, which is the normal PaaS case.
+  if (env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   app.use(requestId);
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CLIENT_URL,
+      // Accept a single origin, a comma-separated allowlist, or per-branch
+      // regex entries — see `config/cors.ts` for the format.
+      origin: (origin, cb) => {
+        if (isAllowedOrigin(origin)) return cb(null, true);
+        cb(new Error(`Origin ${origin} is not allowed by CORS`));
+      },
       credentials: true,
       exposedHeaders: ["X-Request-Id"],
     })
