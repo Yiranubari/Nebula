@@ -67,18 +67,18 @@ const Landing = () => {
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-white/90 to-white/60 max-w-4xl leading-[1.1] mb-6">
             The workspace for <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">visionary teams</span>
           </h1>
-          
+
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl mb-10 leading-relaxed font-light">
-            Unify your tasks, documents, and team chat in a single, beautiful space. 
+            Unify your tasks, documents, and team chat in a single, beautiful space.
             Designed to help you move incredibly fast and stay in flow.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <Link
               to="/signup"
               className="group relative px-8 py-4 bg-white text-slate-900 rounded-full font-bold shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_rgba(255,255,255,0.5)] transition-all flex items-center gap-2 hover:scale-105 active:scale-95"
             >
-              Start for free
+              Create your workspace
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </Link>
             <a
@@ -214,7 +214,7 @@ const Landing = () => {
               to="/signup"
               className="px-8 py-4 bg-white text-slate-900 rounded-full font-bold shadow-xl hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all hover:scale-105 active:scale-95"
             >
-              Get Started for Free
+              Create your workspace
             </Link>
           </div>
         </div>

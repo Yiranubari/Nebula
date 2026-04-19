@@ -1,7 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import Avatar from "../components/Avatar";
 import { Eye, EyeOff, UserPlus, Mail } from "lucide-react";
 import toast from "react-hot-toast";
 import Spinner from "../components/Spinner";
@@ -23,7 +22,7 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [avatar, setAvatar] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
   const [isSigningUp, setIsSigningUp] = useState(false);
 
   // Invite-mode only: OTP digits for the email verification code.
@@ -118,7 +117,13 @@ const Signup = () => {
           });
           if (ok) navigate("/dashboard");
         } else {
-          const ok = await signup(name, email, password, avatar);
+          const ok = await signup(
+            name,
+            email,
+            password,
+            undefined,
+            workspaceName.trim() || undefined
+          );
           if (ok) {
             navigate("/login", { state: { requiresOtp: true, email } });
           }
@@ -134,13 +139,13 @@ const Signup = () => {
         <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[150px]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
       </div>
-      <div className="relative z-10 bg-white/5 backdrop-blur-xl w-[90%] max-w-md rounded-2xl shadow-2xl border border-white/10 p-6 text-white">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-white/10 shadow-lg text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/30">
-            {isInviteMode ? <Mail size={20} /> : <UserPlus size={20} />}
+      <div className="relative z-10 bg-white/[0.03] backdrop-blur-xl w-[90%] max-w-md rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.4)] border border-white/[0.06] p-7 text-white">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_0_28px_rgba(99,102,241,0.35)]">
+            {isInviteMode ? <Mail size={20} strokeWidth={1.75} /> : <UserPlus size={20} strokeWidth={1.75} />}
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+            <h1 className="text-xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
               {isInviteMode
                 ? "Complete your invitation"
                 : "Create your Nebula account"}
@@ -154,18 +159,6 @@ const Signup = () => {
           </div>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
-          {!isInviteMode && (
-            <div className="flex items-center gap-3">
-              <Avatar src={avatar} name={name} size="lg" />
-              <input
-                type="url"
-                value={avatar}
-                onChange={(e) => setAvatar(e.target.value)}
-                placeholder="Avatar URL (optional)"
-                className="flex-1 px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-              />
-            </div>
-          )}
           <div className="flex flex-col">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
               Full Name
@@ -174,9 +167,29 @@ const Signup = () => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100"
+              className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 transition-colors"
             />
           </div>
+          {!isInviteMode && (
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                Workspace name
+              </label>
+              <input
+                type="text"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                placeholder={
+                  name ? `${name}'s Workspace` : "Your team's workspace"
+                }
+                className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 placeholder:text-slate-500 transition-colors"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                You'll be the admin of this workspace and can invite your team
+                later.
+              </p>
+            </div>
+          )}
           <div className="flex flex-col">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
               Email
@@ -186,8 +199,8 @@ const Signup = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               readOnly={isInviteMode}
-              className={`px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 ${
-                isInviteMode ? "opacity-75 cursor-not-allowed" : ""
+              className={`px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 transition-colors ${
+                isInviteMode ? "opacity-60 cursor-not-allowed" : ""
               }`}
             />
             {isInviteMode && (
@@ -216,7 +229,7 @@ const Signup = () => {
                     value={d}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className="w-11 h-12 text-center text-lg bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100"
+                    className="w-11 h-12 text-center text-lg bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 transition-colors"
                     aria-label={`OTP digit ${idx + 1}`}
                   />
                 ))}
@@ -236,12 +249,12 @@ const Signup = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Create a password"
-                className="w-full px-4 py-3 pr-12 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="w-full px-4 py-3 pr-12 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 placeholder:text-slate-500 transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-indigo-400/30 transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 title={showPassword ? "Hide password" : "Show password"}
               >
@@ -262,12 +275,12 @@ const Signup = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter your password"
-                className="w-full px-4 py-3 pr-12 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="w-full px-4 py-3 pr-12 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 placeholder:text-slate-500 transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-indigo-400/30 transition-colors"
                 aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                 title={showConfirmPassword ? "Hide password" : "Show password"}
               >
@@ -284,7 +297,7 @@ const Signup = () => {
             type="submit"
             disabled={isSigningUp}
             aria-busy={isSigningUp}
-            className={`w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium inline-flex items-center justify-center gap-2 ${
+            className={`w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium inline-flex items-center justify-center gap-2 shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow ${
               isSigningUp ? "opacity-80 cursor-not-allowed" : ""
             }`}
           >
@@ -302,7 +315,7 @@ const Signup = () => {
         </form>
         <p className="text-sm text-slate-600 dark:text-slate-300 mt-4">
           Already have an account?{" "}
-          <Link to="/login" className="text-indigo-600 hover:text-indigo-700">
+          <Link to="/login" className="text-indigo-400 hover:text-indigo-300 transition-colors">
             Sign in
           </Link>
         </p>

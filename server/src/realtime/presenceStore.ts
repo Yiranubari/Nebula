@@ -19,25 +19,35 @@ interface InternalPresence {
   status: PresenceStatus;
   lastActive: string;
   inHuddleTrackId: string | null;
+  /** Tenant scope — presence only broadcasts within its workspace. */
+  workspaceId: string;
   /** All active socket IDs belonging to this user (multi-tab / multi-device). */
   connections: Set<string>;
 }
 
 /**
- * Single source of truth for who's online, idle, or in a huddle. The presence
- * handler drives status transitions, the huddle handler drives
- * `inHuddleTrackId`, and any handler can broadcast updates with
- * `broadcastPresence`.
+ * Single source of truth for who's online, idle, or in a huddle. Each entry
+ * is stamped with the user's workspaceId so `snapshot` and `broadcastPresence`
+ * never leak presence across tenants.
  */
 const store = new Map<string, InternalPresence>();
 
-export function ensurePresence(userId: string): InternalPresence {
+export function ensurePresence(
+  userId: string,
+  workspaceId: string
+): InternalPresence {
   const existing = store.get(userId);
-  if (existing) return existing;
+  if (existing) {
+    // Repair workspaceId if a stale entry somehow exists — the newer socket
+    // binding is authoritative.
+    existing.workspaceId = workspaceId;
+    return existing;
+  }
   const fresh: InternalPresence = {
     status: "offline",
     lastActive: new Date().toISOString(),
     inHuddleTrackId: null,
+    workspaceId,
     connections: new Set(),
   };
   store.set(userId, fresh);
@@ -52,10 +62,11 @@ export function deletePresence(userId: string): void {
   store.delete(userId);
 }
 
-/** Serialise the entire map to a `PresenceMap` shape for client consumption. */
-export function snapshot(): Record<string, PresenceInfo> {
+/** Serialise presence for a single workspace. */
+export function snapshot(workspaceId: string): Record<string, PresenceInfo> {
   const out: Record<string, PresenceInfo> = {};
   for (const [userId, p] of store.entries()) {
+    if (p.workspaceId !== workspaceId) continue;
     out[userId] = {
       status: p.status,
       lastActive: p.lastActive,
@@ -65,11 +76,11 @@ export function snapshot(): Record<string, PresenceInfo> {
   return out;
 }
 
-/** Emit a `presence:update` for a single user to every connected client. */
+/** Emit a `presence:update` for a user to everyone in their workspace. */
 export function broadcastPresence(io: NebServer, userId: string): void {
   const p = store.get(userId);
   if (!p) return;
-  io.emit("presence:update", {
+  io.to(`ws:${p.workspaceId}`).emit("presence:update", {
     userId,
     info: {
       status: p.status,
@@ -81,15 +92,15 @@ export function broadcastPresence(io: NebServer, userId: string): void {
 
 /**
  * Mark a user as currently participating in (or leaving) a huddle. Updates the
- * presence record and broadcasts `presence:update` so every other client can
- * render the "in huddle" badge even if they're not in the huddle themselves.
+ * presence record and broadcasts `presence:update` within their workspace.
  */
 export function setInHuddle(
   io: NebServer,
   userId: string,
+  workspaceId: string,
   trackId: string | null
 ): void {
-  const p = ensurePresence(userId);
+  const p = ensurePresence(userId, workspaceId);
   if (p.inHuddleTrackId === trackId) return;
   p.inHuddleTrackId = trackId;
   p.lastActive = new Date().toISOString();

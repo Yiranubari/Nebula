@@ -15,15 +15,28 @@ const ASSIGNEE_EDITABLE_FIELDS = new Set<keyof UpdateTaskDto>([
 ]);
 
 export class TasksService extends BaseService {
-  async createTask(userId: string, data: CreateTaskDto) {
+  async createTask(userId: string, workspaceId: string, data: CreateTaskDto) {
+    // Reject cross-workspace assignee — admins can only assign tasks to people
+    // in their own workspace.
+    if (data.assigneeId) {
+      const assignee = await this.prisma.user.findUnique({
+        where: { id: data.assigneeId },
+        select: { workspaceId: true },
+      });
+      if (!assignee || assignee.workspaceId !== workspaceId) {
+        throw new AppError(404, "Assignee not found in this workspace");
+      }
+    }
+
     const task = await this.prisma.task.create({
-      data,
+      data: { ...data, workspaceId },
       include: { assignee: { select: { id: true, name: true, avatar: true } } },
     });
 
     if (task.assigneeId && task.assigneeId !== userId) {
       await this.prisma.notification.create({
         data: {
+          workspaceId,
           type: "ASSIGNED",
           taskId: task.id,
           requesterId: userId,
@@ -35,12 +48,15 @@ export class TasksService extends BaseService {
     return task;
   }
 
-  async getTasks(filters: {
-    status?: TaskStatus;
-    priority?: Priority;
-    assigneeId?: string;
-  }) {
-    const where: any = {};
+  async getTasks(
+    workspaceId: string,
+    filters: {
+      status?: TaskStatus;
+      priority?: Priority;
+      assigneeId?: string;
+    }
+  ) {
+    const where: any = { workspaceId };
     if (filters.status) where.status = filters.status;
     if (filters.priority) where.priority = filters.priority;
     if (filters.assigneeId) where.assigneeId = filters.assigneeId;
@@ -52,9 +68,9 @@ export class TasksService extends BaseService {
     });
   }
 
-  async getTaskById(taskId: string) {
-    const task = await this.prisma.task.findUnique({
-      where: { id: taskId },
+  async getTaskById(workspaceId: string, taskId: string) {
+    const task = await this.prisma.task.findFirst({
+      where: { id: taskId, workspaceId },
       include: { assignee: { select: { id: true, name: true, avatar: true } } },
     });
 
@@ -65,10 +81,11 @@ export class TasksService extends BaseService {
   async updateTask(
     userId: string,
     role: Role,
+    workspaceId: string,
     taskId: string,
     data: UpdateTaskDto
   ) {
-    const existingTask = await this.getTaskById(taskId);
+    const existingTask = await this.getTaskById(workspaceId, taskId);
 
     const isAdmin = role === "ADMIN";
     const isAssignee = existingTask.assigneeId === userId;
@@ -77,6 +94,17 @@ export class TasksService extends BaseService {
         403,
         "Only the assignee or an admin can update this task"
       );
+    }
+
+    // If assignee is changing, make sure the new assignee is in this workspace.
+    if (data.assigneeId && data.assigneeId !== existingTask.assigneeId) {
+      const next = await this.prisma.user.findUnique({
+        where: { id: data.assigneeId },
+        select: { workspaceId: true },
+      });
+      if (!next || next.workspaceId !== workspaceId) {
+        throw new AppError(404, "Assignee not found in this workspace");
+      }
     }
 
     // Non-admins can only modify a whitelist of fields
@@ -104,6 +132,7 @@ export class TasksService extends BaseService {
     ) {
       await this.prisma.notification.create({
         data: {
+          workspaceId,
           type: "ASSIGNED",
           taskId: task.id,
           requesterId: userId,
@@ -115,12 +144,17 @@ export class TasksService extends BaseService {
     return task;
   }
 
-  async deleteTask(userId: string, role: Role, taskId: string) {
-    await this.getTaskById(taskId);
+  async deleteTask(
+    userId: string,
+    role: Role,
+    workspaceId: string,
+    taskId: string
+  ) {
+    await this.getTaskById(workspaceId, taskId);
     if (role !== "ADMIN") {
       throw new AppError(403, "Only admins can delete a task");
     }
     await this.prisma.task.delete({ where: { id: taskId } });
-    audit("task.delete", { actorId: userId, targetId: taskId });
+    audit("task.delete", { actorId: userId, targetId: taskId, workspaceId });
   }
 }

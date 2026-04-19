@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { BaseController } from "../../core/BaseController";
 import { TasksService } from "./tasks.service";
 import { TaskStatus, Priority } from "@prisma/client";
+import { requireWorkspace } from "../../utils/requireWorkspace";
 
 export class TasksController extends BaseController {
   constructor(private readonly tasksService: TasksService) {
@@ -9,12 +10,16 @@ export class TasksController extends BaseController {
   }
 
   createTask = async (req: Request, res: Response) => {
-    const task = await this.tasksService.createTask(req.user!.id, req.body);
+    const task = await this.tasksService.createTask(
+      req.user!.id,
+      requireWorkspace(req),
+      req.body
+    );
     this.created(res, task);
   };
 
   getTasks = async (req: Request, res: Response) => {
-    const tasks = await this.tasksService.getTasks({
+    const tasks = await this.tasksService.getTasks(requireWorkspace(req), {
       status: req.query.status as TaskStatus,
       priority: req.query.priority as Priority,
       assigneeId: req.query.assigneeId as string,
@@ -23,7 +28,10 @@ export class TasksController extends BaseController {
   };
 
   getTask = async (req: Request, res: Response) => {
-    const task = await this.tasksService.getTaskById(req.params.id as string);
+    const task = await this.tasksService.getTaskById(
+      requireWorkspace(req),
+      req.params.id as string
+    );
     this.ok(res, task);
   };
 
@@ -31,6 +39,7 @@ export class TasksController extends BaseController {
     const task = await this.tasksService.updateTask(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.params.id as string,
       req.body
     );
@@ -41,6 +50,7 @@ export class TasksController extends BaseController {
     await this.tasksService.deleteTask(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.params.id as string
     );
     this.noContent(res);

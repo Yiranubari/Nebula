@@ -44,14 +44,17 @@ export const initSocket = (httpServer: http.Server) => {
       const decoded = verifyAccessToken(token);
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
-        select: { id: true, name: true, role: true },
+        select: { id: true, name: true, role: true, workspaceId: true },
       });
 
       if (!user) return next(new Error("Authentication error: User not found"));
+      if (!user.workspaceId)
+        return next(new Error("Authentication error: No workspace assigned"));
 
       socket.data.userId = user.id;
       socket.data.userName = user.name;
       socket.data.role = user.role;
+      socket.data.workspaceId = user.workspaceId;
       next();
     } catch (err) {
       logger.error({ err }, "Socket authentication failed");
@@ -61,16 +64,22 @@ export const initSocket = (httpServer: http.Server) => {
 
   // ─── Connection handling ────────────────────────────────────────────────────
   io.on("connection", async (socket) => {
-    const { userId, userName } = socket.data;
-    logger.info(`User connected via socket: ${userName} (${userId})`);
+    const { userId, userName, workspaceId } = socket.data;
+    logger.info(
+      `User connected via socket: ${userName} (${userId}) ws=${workspaceId}`
+    );
+
+    // Auto-join the workspace room — used for presence + any workspace-wide
+    // broadcast (e.g., new member joined).
+    socket.join(`ws:${workspaceId}`);
 
     // Auto-join the user's private notification room
     socket.join(`user:${userId}`);
 
-    // Auto-join all track rooms the user is a member of
+    // Auto-join every track the user is a member of in this workspace.
     try {
       const memberships = await prisma.trackMember.findMany({
-        where: { userId },
+        where: { userId, track: { workspaceId } },
         select: { trackId: true },
       });
       for (const { trackId } of memberships) {

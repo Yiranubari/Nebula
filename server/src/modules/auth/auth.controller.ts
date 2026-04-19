@@ -70,6 +70,7 @@ export class AuthController extends BaseController {
         id: req.user!.id,
         role: req.user!.role,
         name: req.user!.name,
+        workspaceId: req.user!.workspaceId,
       },
       req.body
     );

@@ -197,12 +197,12 @@ const Login = () => {
         <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[150px]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
       </div>
-      <div className="relative z-10 bg-white/5 backdrop-blur-xl w-[90%] max-w-md rounded-2xl shadow-2xl border border-white/10 p-6 text-white">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 border border-white/10">
-            <LogIn size={20} />
+      <div className="relative z-10 bg-white/[0.03] backdrop-blur-xl w-[90%] max-w-md rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.4)] border border-white/[0.06] p-7 text-white">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-[0_0_28px_rgba(99,102,241,0.35)]">
+            <LogIn size={20} strokeWidth={1.75} />
           </div>
-          <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+          <h1 className="text-xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
             {mode === "login"
               ? "Sign in to Nebula"
               : mode === "forgot"
@@ -223,7 +223,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 placeholder:text-slate-500 transition-colors"
               />
             </div>
             <div className="flex flex-col">
@@ -236,12 +236,12 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-12 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  className="w-full px-4 py-3 pr-12 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 placeholder:text-slate-500 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-indigo-400/30 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   title={showPassword ? "Hide password" : "Show password"}
                 >
@@ -254,7 +254,7 @@ const Login = () => {
               type="submit"
               disabled={isSigningIn}
               aria-busy={isSigningIn}
-              className={`w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium inline-flex items-center justify-center gap-2 ${
+              className={`w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium inline-flex items-center justify-center gap-2 shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow ${
                 isSigningIn ? "opacity-80 cursor-not-allowed" : ""
               }`}
             >
@@ -269,19 +269,19 @@ const Login = () => {
             </button>
 
             <div className="relative py-1">
-              <div className="h-px bg-slate-200 dark:bg-slate-800" />
-              <span className="absolute left-1/2 -translate-x-1/2 -top-2 bg-white dark:bg-surface px-2 text-xs text-slate-500 dark:text-slate-400">
-                OR
+              <div className="h-px bg-white/[0.06]" />
+              <span className="absolute left-1/2 -translate-x-1/2 -top-2 bg-slate-900 px-3 text-[10px] uppercase tracking-[0.2em] text-slate-500 font-medium">
+                or
               </span>
             </div>
 
             <button
               type="button"
               onClick={onGoogleSignIn}
-              className="w-full px-4 py-3 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-100 rounded-lg font-medium inline-flex items-center justify-center gap-3"
+              className="w-full px-4 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-100 rounded-full font-medium inline-flex items-center justify-center gap-3 transition-colors"
               aria-label="Sign in with Google"
             >
-              <span className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-dark flex items-center justify-center">
+              <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
                 <svg
                   width="18"
                   height="18"
@@ -315,7 +315,7 @@ const Login = () => {
               onClick={() => {
                 setMode("forgot");
               }}
-              className="w-full text-sm text-indigo-600 hover:text-indigo-700"
+              className="w-full text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
             >
               Forgot password?
             </button>
@@ -336,12 +336,12 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 placeholder:text-slate-500 transition-colors"
               />
             </div>
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow"
             >
               Send OTP
             </button>
@@ -378,7 +378,7 @@ const Login = () => {
                   value={d}
                   onChange={(e) => handleOtpChange(idx, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                  className="w-11 h-12 text-center text-lg bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100"
+                  className="w-11 h-12 text-center text-lg bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 transition-colors"
                   aria-label={`OTP digit ${idx + 1}`}
                 />
               ))}
@@ -396,14 +396,14 @@ const Login = () => {
               <button
                 type="button"
                 onClick={onResendOtp}
-                className="text-sm text-indigo-600 hover:text-indigo-700"
+                className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
               >
                 Resend code
               </button>
             </div>
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow"
             >
               Verify OTP
             </button>
@@ -426,12 +426,12 @@ const Login = () => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="New password"
-                  className="w-full px-4 py-3 pr-12 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  className="w-full px-4 py-3 pr-12 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 placeholder:text-slate-500 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-indigo-400/30 transition-colors"
                   aria-label={
                     showNewPassword ? "Hide password" : "Show password"
                   }
@@ -452,12 +452,12 @@ const Login = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm password"
-                  className="w-full px-4 py-3 pr-12 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  className="w-full px-4 py-3 pr-12 bg-white/[0.04] border border-white/[0.08] rounded-xl focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/15 outline-none text-slate-100 placeholder:text-slate-500 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-indigo-400/30 transition-colors"
                   aria-label={
                     showConfirmPassword ? "Hide password" : "Show password"
                   }
@@ -476,7 +476,7 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium"
+              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow"
             >
               Reset Password
             </button>
@@ -497,7 +497,7 @@ const Login = () => {
             No account?{" "}
             <Link
               to="/signup"
-              className="text-indigo-600 hover:text-indigo-700"
+              className="text-indigo-400 hover:text-indigo-300 transition-colors"
             >
               Sign up
             </Link>
@@ -514,7 +514,7 @@ const Login = () => {
                 <button
                   key={u.id}
                   onClick={() => setEmail(u.email)}
-                  className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-800 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100"
+                  className="px-2.5 py-1 text-xs bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-full text-slate-300 transition-colors"
                 >
                   {u.email}
                 </button>

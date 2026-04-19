@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "../../core/BaseController";
 import { UsersService } from "./users.service";
+import { requireWorkspace } from "../../utils/requireWorkspace";
 
 export class UsersController extends BaseController {
   constructor(private readonly usersService: UsersService) {
@@ -17,13 +18,16 @@ export class UsersController extends BaseController {
     this.ok(res, user);
   };
 
-  getAllUsers = async (_req: Request, res: Response) => {
-    const users = await this.usersService.getAllUsers();
+  getAllUsers = async (req: Request, res: Response) => {
+    const users = await this.usersService.getAllUsers(requireWorkspace(req));
     this.ok(res, users);
   };
 
   getUser = async (req: Request, res: Response) => {
-    const user = await this.usersService.getUserById(req.params.id as string);
+    const user = await this.usersService.getUserById(
+      requireWorkspace(req),
+      req.params.id as string
+    );
     this.ok(res, user);
   };
 
@@ -31,6 +35,7 @@ export class UsersController extends BaseController {
     await this.usersService.deleteUser(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.params.id as string
     );
     this.noContent(res);
@@ -40,6 +45,7 @@ export class UsersController extends BaseController {
     const user = await this.usersService.updateRole(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.params.id as string,
       req.body.role
     );

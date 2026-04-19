@@ -51,7 +51,7 @@ const Members: React.FC = () => {
                 <div className="mt-2 flex items-center gap-2">
                   <Link
                     to={`/profile?userId=${u.id}`}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-200/70 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5"
+                    className="text-xs px-3 py-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5"
                   >
                     View Profile
                   </Link>

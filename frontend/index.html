@@ -82,24 +82,66 @@
         color: transparent;
       }
 
-      /* Glass panel surface used across the app */
+      /* Glass panel surfaces — borderless, elevated by soft layered shadows */
       .glass-panel {
-        background-color: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(15, 23, 42, 0.08);
+        background-color: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(14px);
+        border: 0;
+        box-shadow:
+          0 1px 3px rgba(15, 23, 42, 0.08),
+          0 12px 32px -10px rgba(15, 23, 42, 0.16);
       }
       html.dark .glass-panel {
-        background-color: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: rgba(255, 255, 255, 0.025);
+        border: 0;
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.04) inset,
+          0 12px 28px -12px rgba(0, 0, 0, 0.55);
       }
       .glass-panel-strong {
-        background-color: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(15, 23, 42, 0.08);
+        background-color: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(18px);
+        border: 0;
+        box-shadow:
+          0 2px 6px rgba(15, 23, 42, 0.1),
+          0 18px 44px -12px rgba(15, 23, 42, 0.22);
       }
       html.dark .glass-panel-strong {
-        background-color: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(255, 255, 255, 0.035);
+        border: 0;
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.05) inset,
+          0 16px 40px -16px rgba(0, 0, 0, 0.6);
+      }
+      /* Borderless soft surface — for cards that should feel like the landing page */
+      .soft-surface {
+        background-color: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        border: 0;
+        box-shadow:
+          0 1px 3px rgba(15, 23, 42, 0.08),
+          0 8px 24px -10px rgba(15, 23, 42, 0.14);
+        transition: background-color 0.2s ease, box-shadow 0.2s ease,
+          transform 0.2s ease;
+      }
+      html.dark .soft-surface {
+        background-color: rgba(255, 255, 255, 0.025);
+        border: 0;
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.04) inset,
+          0 8px 20px -10px rgba(0, 0, 0, 0.5);
+      }
+      .soft-surface:hover {
+        background-color: rgba(255, 255, 255, 0.95);
+        box-shadow:
+          0 2px 6px rgba(15, 23, 42, 0.1),
+          0 16px 36px -10px rgba(15, 23, 42, 0.2);
+      }
+      html.dark .soft-surface:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.07) inset,
+          0 16px 36px -12px rgba(0, 0, 0, 0.6);
       }
 
       /* Atmospheric background — subtle gradient orbs & grid */
@@ -182,6 +224,21 @@
             rgba(15, 23, 42, 0.05) 1px,
             transparent 1px
           );
+      }
+
+      /* Native <select> option list — force readable colors per theme.
+         Browsers render the option popup using OS-level styling by default,
+         which gives white-on-white in dark mode on most platforms. */
+      html:not(.dark) select option {
+        background-color: #ffffff;
+        color: #0f172a;
+      }
+      html.dark select option {
+        background-color: #0f172a;
+        color: #f1f5f9;
+      }
+      html.dark select option:checked {
+        background-color: #1e293b;
       }
 
       /* Custom Scrollbar */

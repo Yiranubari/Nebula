@@ -5,8 +5,8 @@ import { AppError } from "../../utils/AppError";
 type Role = "ADMIN" | "MEMBER";
 
 /**
- * Admins can read and write in every track regardless of explicit membership
- * (they moderate the whole workspace). Members must be on the track roster.
+ * Admins can read and write in every track in their workspace regardless of
+ * explicit membership. Members must be on the track roster.
  */
 const canAccessTrack = (role: Role, isMember: boolean) =>
   role === "ADMIN" || isMember;
@@ -19,12 +19,24 @@ export class MessagesService extends BaseService {
     return !!member;
   }
 
+  /** Fetches a track, verifying it's in the caller's workspace. */
+  private async getTrackInWorkspace(trackId: string, workspaceId: string) {
+    const track = await this.prisma.track.findFirst({
+      where: { id: trackId, workspaceId },
+      select: { id: true },
+    });
+    if (!track) throw new AppError(404, "Track not found");
+    return track;
+  }
+
   async sendMessage(
     userId: string,
     role: Role,
+    workspaceId: string,
     trackId: string,
     data: SendMessageDto
   ) {
+    await this.getTrackInWorkspace(trackId, workspaceId);
     if (!canAccessTrack(role, await this.isMember(trackId, userId))) {
       throw new AppError(
         403,
@@ -34,12 +46,13 @@ export class MessagesService extends BaseService {
 
     return this.prisma.message.create({
       data: {
+        workspaceId,
         content: data.content,
         userId,
         trackId,
         parentId: data.parentId || null,
         ...(data.attachments ? { attachments: data.attachments } : {}),
-        readBy: [userId], // author logically has read their own message
+        readBy: [userId],
       },
       include: {
         user: { select: { id: true, name: true, avatar: true } },
@@ -50,10 +63,12 @@ export class MessagesService extends BaseService {
   async getMessages(
     userId: string,
     role: Role,
+    workspaceId: string,
     trackId: string,
     limit = 50,
     cursor?: string
   ) {
+    await this.getTrackInWorkspace(trackId, workspaceId);
     if (!canAccessTrack(role, await this.isMember(trackId, userId))) {
       throw new AppError(
         403,
@@ -62,7 +77,7 @@ export class MessagesService extends BaseService {
     }
 
     const messages = await this.prisma.message.findMany({
-      where: { trackId, parentId: null }, // Default chat fetches root threads
+      where: { workspaceId, trackId, parentId: null },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: { createdAt: "desc" },
@@ -77,19 +92,28 @@ export class MessagesService extends BaseService {
       nextCursor = nextItem?.id;
     }
 
-    // Sort to ascending for UI rendering (oldest first at top of screen)
     return {
       items: messages.reverse(),
       nextCursor,
     };
   }
 
-  async editMessage(userId: string, messageId: string, data: EditMessageDto) {
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
+  /** Lookup a message and verify it's in the caller's workspace. */
+  private async getScopedMessage(messageId: string, workspaceId: string) {
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, workspaceId },
     });
-
     if (!message) throw new AppError(404, "Message not found");
+    return message;
+  }
+
+  async editMessage(
+    userId: string,
+    workspaceId: string,
+    messageId: string,
+    data: EditMessageDto
+  ) {
+    const message = await this.getScopedMessage(messageId, workspaceId);
     if (message.userId !== userId)
       throw new AppError(403, "You can only edit your own messages");
 
@@ -102,12 +126,8 @@ export class MessagesService extends BaseService {
     });
   }
 
-  async deleteMessage(userId: string, messageId: string) {
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
-    });
-
-    if (!message) throw new AppError(404, "Message not found");
+  async deleteMessage(userId: string, workspaceId: string, messageId: string) {
+    const message = await this.getScopedMessage(messageId, workspaceId);
     if (message.userId !== userId)
       throw new AppError(403, "You can only delete your own messages");
 
@@ -129,14 +149,11 @@ export class MessagesService extends BaseService {
   async setPinned(
     userId: string,
     role: Role,
+    workspaceId: string,
     messageId: string,
     pinned: boolean
   ) {
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
-    });
-    if (!message) throw new AppError(404, "Message not found");
-
+    const message = await this.getScopedMessage(messageId, workspaceId);
     await this.assertTrackAccess(message.trackId, userId, role);
     if (role !== "ADMIN" && message.userId !== userId) {
       throw new AppError(403, "Only admins or the author can pin this message");
@@ -154,14 +171,11 @@ export class MessagesService extends BaseService {
   async toggleReaction(
     userId: string,
     role: Role,
+    workspaceId: string,
     messageId: string,
     emoji: string
   ) {
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
-    });
-    if (!message) throw new AppError(404, "Message not found");
-
+    const message = await this.getScopedMessage(messageId, workspaceId);
     await this.assertTrackAccess(message.trackId, userId, role);
 
     const reactions = (message.reactions as Record<string, string[]>) ?? {};
@@ -182,12 +196,13 @@ export class MessagesService extends BaseService {
     });
   }
 
-  async markRead(userId: string, role: Role, messageId: string) {
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
-    });
-    if (!message) throw new AppError(404, "Message not found");
-
+  async markRead(
+    userId: string,
+    role: Role,
+    workspaceId: string,
+    messageId: string
+  ) {
+    const message = await this.getScopedMessage(messageId, workspaceId);
     await this.assertTrackAccess(message.trackId, userId, role);
 
     if (message.readBy.includes(userId)) return message;

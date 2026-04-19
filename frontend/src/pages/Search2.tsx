@@ -10,6 +10,7 @@ import {
   ListChecks,
 } from "lucide-react";
 import Spinner from "../components/Spinner";
+import Select from "../components/Select";
 import {
   isProbablySlowNetwork,
   runWithDelayedSpinner,
@@ -95,7 +96,7 @@ export default function SearchPage() {
 
       const attachments: Attachment[] = (m.attachments || []) as Attachment[];
       const anyAttachmentHit = attachments.some((a) =>
-        matches(a.name || a.type || "", q)
+        matches(a.name || a.type || "", q),
       );
 
       if (contentHit || authorHit || anyAttachmentHit) {
@@ -135,17 +136,17 @@ export default function SearchPage() {
     messageResults.sort(
       (a, b) =>
         (new Date(b.item.timestamp || 0).getTime() || 0) -
-        (new Date(a.item.timestamp || 0).getTime() || 0)
+        (new Date(a.item.timestamp || 0).getTime() || 0),
     );
     fileResults.sort(
       (a, b) =>
         (new Date(b.message.timestamp || 0).getTime() || 0) -
-        (new Date(a.message.timestamp || 0).getTime() || 0)
+        (new Date(a.message.timestamp || 0).getTime() || 0),
     );
     taskResults.sort(
       (a, b) =>
         (new Date(b.item.createdAt || 0).getTime() || 0) -
-        (new Date(a.item.createdAt || 0).getTime() || 0)
+        (new Date(a.item.createdAt || 0).getTime() || 0),
     );
 
     return { messageResults, fileResults, taskResults };
@@ -155,8 +156,8 @@ export default function SearchPage() {
     const trackId = m.trackId || tracks[0]?.id || "track-general";
     navigate(
       `/chat?trackId=${encodeURIComponent(
-        trackId
-      )}&messageId=${encodeURIComponent(m.id)}`
+        trackId,
+      )}&messageId=${encodeURIComponent(m.id)}`,
     );
   };
 
@@ -168,8 +169,8 @@ export default function SearchPage() {
     const trackId = msg.trackId || tracks[0]?.id || "track-general";
     navigate(
       `/chat?trackId=${encodeURIComponent(
-        trackId
-      )}&messageId=${encodeURIComponent(msg.id)}#attachments`
+        trackId,
+      )}&messageId=${encodeURIComponent(msg.id)}#attachments`,
     );
   };
 
@@ -190,7 +191,7 @@ export default function SearchPage() {
         </p>
       </div>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4 mb-4">
-        <div className="flex items-center gap-2 flex-1 border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 flex-1 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg px-3 py-2">
           <SearchIcon
             size={18}
             className="text-slate-500 dark:text-slate-400"
@@ -230,7 +231,7 @@ export default function SearchPage() {
         </div>
         <div className="flex items-center gap-2">
           <Filter size={18} className="text-slate-500 dark:text-slate-400" />
-          <div className="flex rounded-lg border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
+          <div className="flex rounded-lg bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
             {(["All", "Messages", "Files", "Tasks"] as Category[]).map((c) => (
               <button
                 key={c}
@@ -245,18 +246,15 @@ export default function SearchPage() {
               </button>
             ))}
           </div>
-          <select
+          <Select<string>
             value={trackFilter}
-            onChange={(e) => setTrackFilter(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
-          >
-            <option value="all">All Tracks</option>
-            {tracks.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+            onChange={setTrackFilter}
+            ariaLabel="Filter by track"
+            options={[
+              { value: "all", label: "All Tracks" },
+              ...tracks.map((t) => ({ value: t.id, label: t.name })),
+            ]}
+          />
         </div>
       </div>
 
@@ -269,7 +267,7 @@ export default function SearchPage() {
             type="datetime-local"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
+            className="px-3 py-2 text-sm rounded-lg bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -280,7 +278,7 @@ export default function SearchPage() {
             type="datetime-local"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
+            className="px-3 py-2 text-sm rounded-lg bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
           />
         </div>
       </div>
@@ -304,7 +302,7 @@ export default function SearchPage() {
                 return (
                   <div
                     key={item.id}
-                    className="border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
+                    className=" bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
                   >
                     <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">
                       {track ? `#${track.name}` : "#unknown"} ·{" "}
@@ -353,7 +351,7 @@ export default function SearchPage() {
                     key={`${message.id}-${item.name}-${item.type}-${
                       item.size || 0
                     }`}
-                    className="border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
+                    className=" bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
                   >
                     <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">
                       {track ? `#${track.name}` : "#unknown"} ·{" "}
@@ -397,7 +395,7 @@ export default function SearchPage() {
               {taskResults.map(({ item }) => (
                 <div
                   key={item.id}
-                  className="border border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
+                  className=" bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
                 >
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {item.title}
@@ -413,7 +411,7 @@ export default function SearchPage() {
                       {item.labels.map((l) => (
                         <span
                           key={l}
-                          className="text-[11px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-2 py-0.5 text-slate-700 dark:text-slate-200"
+                          className="text-[11px] bg-slate-100 dark:bg-slate-800 rounded-full px-2 py-0.5 text-slate-700 dark:text-slate-200"
                         >
                           {l}
                         </span>

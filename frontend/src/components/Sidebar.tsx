@@ -13,8 +13,11 @@ import {
   Users as UsersIcon,
   Inbox as InboxIcon,
   Search as SearchIcon,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useTheme } from "../context/ThemeContext";
 import Avatar from "./Avatar";
 
 interface SidebarProps {
@@ -39,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     presence,
   } = useApp();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -153,8 +157,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const containerBase =
     variant === "mobile"
-      ? "w-[85vw] max-w-xs h-full flex flex-col bg-white/95 dark:bg-[#0b1120]/85 backdrop-blur-xl border-r border-slate-200/60 dark:border-white/10"
-      : "w-64 h-screen flex flex-col bg-white/70 dark:bg-[#0b1120]/60 backdrop-blur-xl border-r border-slate-200/60 dark:border-white/10 sticky top-0";
+      ? "w-[85vw] max-w-xs h-full flex flex-col bg-white/95 dark:bg-[#0b1120]/90 backdrop-blur-xl shadow-[6px_0_28px_-10px_rgba(15,23,42,0.18)] dark:shadow-[6px_0_32px_-12px_rgba(0,0,0,0.6)]"
+      : "w-64 h-screen flex flex-col bg-white/70 dark:bg-[#0b1120]/60 backdrop-blur-xl shadow-[2px_0_18px_-10px_rgba(15,23,42,0.08)] dark:shadow-[2px_0_24px_-14px_rgba(0,0,0,0.5)] sticky top-0";
 
   return (
     <div
@@ -162,12 +166,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       id={id}
       tabIndex={variant === "mobile" ? -1 : undefined}
     >
-      <div className="p-6 border-b border-slate-100 dark:border-white/10 flex items-center gap-2">
+      <div className="p-6 flex items-center gap-3">
         <Link
           to="/landing"
           onClick={variant === "mobile" ? onClose : undefined}
           aria-label="Go to landing"
-          className="group inline-flex items-center justify-center"
+          className="group inline-flex items-center justify-center shrink-0"
         >
           <img
             src="/logo.svg"
@@ -175,11 +179,23 @@ const Sidebar: React.FC<SidebarProps> = ({
             className="w-10 h-10 group-hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_12px_rgba(168,85,247,0.45)]"
           />
         </Link>
-        <h1 className="text-xl font-bold tracking-tight text-brand">Nebula</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-bold tracking-tight text-brand leading-none">
+            Nebula
+          </h1>
+          {currentUser.workspace?.name && (
+            <p
+              className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 truncate"
+              title={currentUser.workspace.name}
+            >
+              {currentUser.workspace.name}
+            </p>
+          )}
+        </div>
         {variant === "mobile" && (
           <button
             onClick={onClose}
-            className="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shrink-0"
             aria-label="Close sidebar"
           >
             ✕
@@ -197,8 +213,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               onClick={variant === "mobile" ? onClose : undefined}
               className={`relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 active
-                  ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-indigo-700 dark:text-white border border-indigo-500/20 dark:border-white/10 shadow-sm"
-                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
+                  ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-indigo-700 dark:text-white shadow-sm shadow-indigo-500/10"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               {active && (
@@ -236,7 +252,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-100 dark:border-white/10">
+      <div className="p-4">
         <div className="flex items-center gap-3 px-2">
           <Avatar
             src={currentUser.avatar}
@@ -255,7 +271,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate flex items-center gap-2">
               <span className="truncate">{currentUser.name}</span>
               {presence[currentUser.id]?.inHuddleTrackId && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-violet-50 text-violet-700 border border-violet-200 shrink-0">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-300 shrink-0">
                   In huddle
                 </span>
               )}
@@ -264,14 +280,24 @@ const Sidebar: React.FC<SidebarProps> = ({
               {currentUser.role.toLowerCase()}
             </p>
           </div>
-          <button
-            onClick={() => setConfirmLogout(true)}
-            className="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            title="Log out"
-            aria-label="Log out"
-          >
-            <LogOut size={18} />
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-900/5 dark:hover:bg-white/[0.06] transition-colors"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              onClick={() => setConfirmLogout(true)}
+              className="p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-900/5 dark:hover:bg-white/[0.06] transition-colors"
+              title="Log out"
+              aria-label="Log out"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </div>
 

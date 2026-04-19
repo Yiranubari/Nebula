@@ -5,8 +5,24 @@ const prisma = new PrismaClient();
 
 const SALT_ROUNDS = 12;
 
+/**
+ * Seed a single demo workspace with an admin + four members, two tracks,
+ * and a bunch of tasks. Useful for local manual QA; never run in production.
+ */
 async function main() {
   const passwordHash = await bcrypt.hash("password123", SALT_ROUNDS);
+
+  // Workspace + admin come first since everything else FKs into the workspace.
+  const workspace = await prisma.workspace.upsert({
+    where: { slug: "nebula-demo" },
+    update: {},
+    create: {
+      name: "Nebula Demo",
+      slug: "nebula-demo",
+      // ownerId backfilled after admin is created (see update below).
+      ownerId: "__placeholder__",
+    },
+  });
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@nebula.dev" },
@@ -17,7 +33,15 @@ async function main() {
       passwordHash,
       role: Role.ADMIN,
       avatar: "https://api.dicebear.com/9.x/initials/svg?seed=AU",
+      workspaceId: workspace.id,
+      isVerified: true,
     },
+  });
+
+  // Fix the placeholder owner now that admin exists.
+  await prisma.workspace.update({
+    where: { id: workspace.id },
+    data: { ownerId: admin.id },
   });
 
   const members = await Promise.all(
@@ -36,6 +60,8 @@ async function main() {
           passwordHash,
           role: Role.MEMBER,
           avatar: `https://api.dicebear.com/9.x/initials/svg?seed=${u.name.split(" ").map((n) => n[0]).join("")}`,
+          workspaceId: workspace.id,
+          isVerified: true,
         },
       })
     )
@@ -48,7 +74,9 @@ async function main() {
     update: {},
     create: {
       id: "track-general",
-      name: "General",
+      name: "general",
+      isDefault: true,
+      workspaceId: workspace.id,
     },
   });
 
@@ -57,7 +85,8 @@ async function main() {
     update: {},
     create: {
       id: "track-dev",
-      name: "Development",
+      name: "development",
+      workspaceId: workspace.id,
     },
   });
 
@@ -98,11 +127,14 @@ async function main() {
         assigneeId: allUsers[t.assigneeIdx].id,
         estimatedHours: t.hours,
         labels: [],
+        workspaceId: workspace.id,
       },
     });
   }
 
-  console.log(`Seeded ${allUsers.length} users, 2 tracks, ${taskData.length} tasks`);
+  console.log(
+    `Seeded 1 workspace, ${allUsers.length} users, 2 tracks, ${taskData.length} tasks`
+  );
 }
 
 main()

@@ -15,6 +15,7 @@ import {
 import { useApp } from "../context/AppContext";
 import { useCall } from "../context/CallContext";
 import Avatar from "./Avatar";
+import Select from "./Select";
 
 export default function HuddleCall({
   trackId,
@@ -542,38 +543,20 @@ function DeviceSelect({
         {icon}
         {label}
       </label>
-      <div className="relative">
-        <select
-          className="w-full appearance-none bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-slate-100 pl-3 pr-9 py-2 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          aria-label={label}
-        >
-          <option value="" className="bg-[#0f172a]">
-            {defaultLabel}
-          </option>
-          {devices.map((d) => (
-            <option key={d.deviceId} value={d.deviceId} className="bg-[#0f172a]">
-              {d.label || `${label} ${d.deviceId.slice(0, 6)}`}
-            </option>
-          ))}
-        </select>
-        <svg
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          width="10"
-          height="10"
-          viewBox="0 0 12 8"
-          fill="none"
-        >
-          <path
-            d="M1 1l5 5 5-5"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
+      <Select<string>
+        value={value}
+        onChange={onChange}
+        placeholder={defaultLabel}
+        className="w-full justify-between"
+        ariaLabel={label}
+        options={[
+          { value: "", label: defaultLabel },
+          ...devices.map((d) => ({
+            value: d.deviceId,
+            label: d.label || `${label} ${d.deviceId.slice(0, 6)}`,
+          })),
+        ]}
+      />
     </div>
   );
 }

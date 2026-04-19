@@ -6,12 +6,11 @@ import { audit } from "../../utils/audit";
 type Role = "ADMIN" | "MEMBER";
 
 export class TracksService extends BaseService {
-  async createTrack(userId: string, data: CreateTrackDto) {
-    // Bootstrap rule: if the workspace has no default track yet, the first
-    // track created becomes the default so invited users have somewhere to
-    // land automatically.
+  async createTrack(userId: string, workspaceId: string, data: CreateTrackDto) {
+    // Bootstrap rule within this workspace: if there's no default track yet,
+    // the first track becomes the default so invitees have somewhere to land.
     const existingDefault = await this.prisma.track.findFirst({
-      where: { isDefault: true },
+      where: { isDefault: true, workspaceId },
       select: { id: true },
     });
     const shouldBeDefault = !existingDefault;
@@ -20,6 +19,7 @@ export class TracksService extends BaseService {
       data: {
         name: data.name,
         isDefault: shouldBeDefault,
+        workspaceId,
         members: {
           create: {
             userId,
@@ -36,9 +36,10 @@ export class TracksService extends BaseService {
     });
   }
 
-  async getTracksForUser(userId: string) {
+  async getTracksForUser(userId: string, workspaceId: string) {
     return this.prisma.track.findMany({
       where: {
+        workspaceId,
         members: {
           some: { userId },
         },
@@ -54,9 +55,14 @@ export class TracksService extends BaseService {
     });
   }
 
-  async getTrackById(trackId: string, userId: string, role: Role = "MEMBER") {
-    const track = await this.prisma.track.findUnique({
-      where: { id: trackId },
+  async getTrackById(
+    trackId: string,
+    userId: string,
+    workspaceId: string,
+    role: Role = "MEMBER"
+  ) {
+    const track = await this.prisma.track.findFirst({
+      where: { id: trackId, workspaceId },
       include: {
         members: {
           include: {
@@ -68,7 +74,7 @@ export class TracksService extends BaseService {
 
     if (!track) throw new AppError(404, "Track not found");
 
-    // Admins can see every track even if they aren't on the member list.
+    // Admins see every track in their workspace even if they aren't members.
     const isMember = track.members.some((m) => m.userId === userId);
     if (role !== "ADMIN" && !isMember) {
       throw new AppError(403, "Not a member of this track");
@@ -81,14 +87,21 @@ export class TracksService extends BaseService {
     trackId: string,
     actorUserId: string,
     actorRole: Role,
+    workspaceId: string,
     targetUserId: string
   ) {
-    // Ensure the requester can see the track (admin OR member).
-    await this.getTrackById(trackId, actorUserId, actorRole);
+    await this.getTrackById(trackId, actorUserId, workspaceId, actorRole);
 
-    // Idempotent: if the user is already a member, return the existing row
-    // rather than surfacing a Prisma unique-constraint error. Admins often
-    // double-click the checkbox or race two concurrent toggles.
+    // Verify target is in the same workspace — you cannot pull a user from
+    // another tenant into your track.
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { workspaceId: true },
+    });
+    if (!target || target.workspaceId !== workspaceId) {
+      throw new AppError(404, "User not found in this workspace");
+    }
+
     return this.prisma.trackMember.upsert({
       where: { trackId_userId: { trackId, userId: targetUserId } },
       create: { trackId, userId: targetUserId },
@@ -103,9 +116,10 @@ export class TracksService extends BaseService {
     trackId: string,
     actorUserId: string,
     actorRole: Role,
+    workspaceId: string,
     targetUserId: string
   ) {
-    await this.getTrackById(trackId, actorUserId, actorRole);
+    await this.getTrackById(trackId, actorUserId, workspaceId, actorRole);
 
     await this.prisma.trackMember.delete({
       where: {
@@ -121,19 +135,19 @@ export class TracksService extends BaseService {
     trackId: string,
     userId: string,
     role: Role,
+    workspaceId: string,
     data: UpdateTrackDto
   ) {
-    // Must be a member to see it, admin to edit
-    await this.getTrackById(trackId, userId);
+    await this.getTrackById(trackId, userId, workspaceId);
     if (role !== "ADMIN") {
       throw new AppError(403, "Only admins can update a track");
     }
 
-    // Flipping a track to default demotes any existing defaults so we only
-    // ever have one "#general" equivalent at a time.
+    // Flipping this track to default demotes any existing defaults in the
+    // same workspace so there's only ever one "#general" per workspace.
     if (data.isDefault === true) {
       await this.prisma.track.updateMany({
-        where: { isDefault: true, NOT: { id: trackId } },
+        where: { isDefault: true, workspaceId, NOT: { id: trackId } },
         data: { isDefault: false },
       });
     }
@@ -154,21 +168,30 @@ export class TracksService extends BaseService {
       },
     });
     if (data.name !== undefined) {
-      audit("track.rename", { actorId: userId, targetId: trackId, name: data.name });
+      audit("track.rename", {
+        actorId: userId,
+        targetId: trackId,
+        name: data.name,
+        workspaceId,
+      });
     }
     return track;
   }
 
-  async deleteTrack(trackId: string, userId: string, role: Role) {
-    await this.getTrackById(trackId, userId);
+  async deleteTrack(
+    trackId: string,
+    userId: string,
+    role: Role,
+    workspaceId: string
+  ) {
+    await this.getTrackById(trackId, userId, workspaceId);
     if (role !== "ADMIN") {
       throw new AppError(403, "Only admins can delete a track");
     }
 
-    // Cascade deletes TrackMember + Message rows via schema onDelete: Cascade
     await this.prisma.track.delete({
       where: { id: trackId },
     });
-    audit("track.delete", { actorId: userId, targetId: trackId });
+    audit("track.delete", { actorId: userId, targetId: trackId, workspaceId });
   }
 }

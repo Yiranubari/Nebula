@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "../../core/BaseController";
 import { DmService } from "./dm.service";
+import { requireWorkspace } from "../../utils/requireWorkspace";
 
 export class DmController extends BaseController {
   constructor(private readonly dmService: DmService) {
@@ -11,6 +12,7 @@ export class DmController extends BaseController {
     const toUserId = req.params.userId as string;
     const message = await this.dmService.sendDm(
       req.user!.id,
+      requireWorkspace(req),
       toUserId,
       req.body
     );
@@ -26,6 +28,7 @@ export class DmController extends BaseController {
 
     const result = await this.dmService.getConversation(
       req.user!.id,
+      requireWorkspace(req),
       targetUserId,
       limit,
       cursor
@@ -36,6 +39,7 @@ export class DmController extends BaseController {
   deleteDm = async (req: Request, res: Response) => {
     await this.dmService.deleteOwnDm(
       req.user!.id,
+      requireWorkspace(req),
       req.params.messageId as string
     );
     this.noContent(res);

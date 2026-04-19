@@ -27,16 +27,14 @@ type NebSocket = Socket<
 >;
 
 export const registerPresenceHandlers = (io: NebServer, socket: NebSocket) => {
-  const userId = socket.data.userId;
+  const { userId, workspaceId } = socket.data;
 
-  // ─── Initial sync ──────────────────────────────────────────────────────────
-  // Before we mark this socket as online, hand them a snapshot of everyone
-  // else's current presence so they can render "X is in a huddle" immediately
-  // rather than waiting for the next change event.
-  socket.emit("presence:snapshot", { presence: snapshot() });
+  // Send a snapshot of everyone else's presence within this workspace so the
+  // client can render status immediately, without waiting for deltas.
+  socket.emit("presence:snapshot", { presence: snapshot(workspaceId) });
 
   // Upsert / bump this user to online.
-  const presence = ensurePresence(userId);
+  const presence = ensurePresence(userId, workspaceId);
   presence.connections.add(socket.id);
   presence.status = "online";
   presence.lastActive = new Date().toISOString();

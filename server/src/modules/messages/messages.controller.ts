@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "../../core/BaseController";
 import { MessagesService } from "./messages.service";
+import { requireWorkspace } from "../../utils/requireWorkspace";
 
 export class MessagesController extends BaseController {
   constructor(private readonly messagesService: MessagesService) {
@@ -12,6 +13,7 @@ export class MessagesController extends BaseController {
     const message = await this.messagesService.sendMessage(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       trackId,
       req.body
     );
@@ -28,6 +30,7 @@ export class MessagesController extends BaseController {
     const result = await this.messagesService.getMessages(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       trackId,
       limit,
       cursor
@@ -38,6 +41,7 @@ export class MessagesController extends BaseController {
   editMessage = async (req: Request, res: Response) => {
     const message = await this.messagesService.editMessage(
       req.user!.id,
+      requireWorkspace(req),
       req.params.messageId as string,
       req.body
     );
@@ -47,6 +51,7 @@ export class MessagesController extends BaseController {
   deleteMessage = async (req: Request, res: Response) => {
     await this.messagesService.deleteMessage(
       req.user!.id,
+      requireWorkspace(req),
       req.params.messageId as string
     );
     this.noContent(res);
@@ -56,6 +61,7 @@ export class MessagesController extends BaseController {
     const message = await this.messagesService.setPinned(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.params.messageId as string,
       req.body.pinned
     );
@@ -66,6 +72,7 @@ export class MessagesController extends BaseController {
     const message = await this.messagesService.toggleReaction(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.params.messageId as string,
       req.body.emoji
     );
@@ -76,6 +83,7 @@ export class MessagesController extends BaseController {
     const message = await this.messagesService.markRead(
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.params.messageId as string
     );
     this.ok(res, message);

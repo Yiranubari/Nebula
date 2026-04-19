@@ -21,6 +21,7 @@ import {
   UserMinus,
 } from "lucide-react";
 import Avatar from "../components/Avatar";
+import Select from "../components/Select";
 import { Attachment } from "../types";
 import HuddleCall from "../components/HuddleCall";
 
@@ -51,12 +52,12 @@ const Chat = () => {
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmDeleteMsgId, setConfirmDeleteMsgId] = useState<string | null>(
-    null
+    null,
   );
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [activeTrackId, setActiveTrackId] = useState<string>(
-    () => tracks[0]?.id || "track-general"
+    () => tracks[0]?.id || "track-general",
   );
   const [newTrackName, setNewTrackName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -84,10 +85,10 @@ const Chat = () => {
   // Audio playback UI state (WhatsApp-style)
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState<Record<string, number>>(
-    {}
+    {},
   );
   const [audioDuration, setAudioDuration] = useState<Record<string, number>>(
-    {}
+    {},
   );
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const playbackUrlsRef = useRef<Record<string, string>>({});
@@ -114,7 +115,7 @@ const Chat = () => {
   // WhatsApp-style quick reactions
   const reactionQuick = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
   const [reactionPopoverId, setReactionPopoverId] = useState<string | null>(
-    null
+    null,
   );
   const [emojiPickerId, setEmojiPickerId] = useState<string | null>(null);
   const [emojiQuery, setEmojiQuery] = useState("");
@@ -306,12 +307,12 @@ const Chat = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {raw}
-          </Link>
+          </Link>,
         );
       } else {
         // Resolve to track by name
         const matchedTrack = tracks.find(
-          (t) => t.name.toLowerCase() === handle
+          (t) => t.name.toLowerCase() === handle,
         );
         if (matchedTrack) {
           elements.push(
@@ -323,7 +324,7 @@ const Chat = () => {
               onClick={(e) => e.stopPropagation()}
             >
               {raw}
-            </Link>
+            </Link>,
           );
         } else {
           elements.push(raw);
@@ -360,7 +361,7 @@ const Chat = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
       const preferredMime = MediaRecorder.isTypeSupported(
-        "audio/webm;codecs=opus"
+        "audio/webm;codecs=opus",
       )
         ? "audio/webm;codecs=opus"
         : "audio/webm";
@@ -498,7 +499,7 @@ const Chat = () => {
         (m) =>
           (m.trackId || tracks[0]?.id || "track-general") === activeTrackId &&
           !m.parentId &&
-          m.userId === currentUser.id
+          m.userId === currentUser.id,
       )
       .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
     return inTrack.length ? inTrack[inTrack.length - 1].id : null;
@@ -531,7 +532,7 @@ const Chat = () => {
       .flat()
       .filter(
         (x, idx, arr) =>
-          arr.findIndex((y) => y.key === x.key && y.u.id === x.u.id) === idx
+          arr.findIndex((y) => y.key === x.key && y.u.id === x.u.id) === idx,
       )
       .filter((x) => (q ? x.key.startsWith(q) : true))
       .slice(0, 20)
@@ -610,12 +611,12 @@ const Chat = () => {
     const list = messages.filter(
       (m) =>
         (m.trackId || tracks[0]?.id || "track-general") === activeTrackId &&
-        m.pinned
+        m.pinned,
     );
     return list
       .slice()
       .sort(
-        (a, b) => Date.parse(b.timestamp || "") - Date.parse(a.timestamp || "")
+        (a, b) => Date.parse(b.timestamp || "") - Date.parse(a.timestamp || ""),
       );
   }, [messages, activeTrackId, tracks]);
   const hasPinnedForTrack = pinnedForTrack.length > 0;
@@ -623,13 +624,13 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen overflow-hidden bg-transparent">
       {renaming && currentUser.role === "ADMIN" && (
-        <div className="px-6 py-2 bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl border-b border-slate-200/60 dark:border-white/10 flex items-center gap-2">
+        <div className="px-6 py-2 bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl flex items-center gap-2 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <input
             type="text"
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             placeholder="New track name"
-            className="px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-dark text-sm flex-1 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            className="px-3 py-2 rounded bg-white dark:bg-dark text-sm flex-1 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
           <button
             className="px-3 py-2 rounded bg-slate-800 text-white text-sm hover:bg-slate-900"
@@ -647,7 +648,7 @@ const Chat = () => {
             Save
           </button>
           <button
-            className="px-3 py-2 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="px-3 py-2 rounded text-slate-700 dark:text-slate-200 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
             onClick={() => setRenaming(false)}
           >
             Cancel
@@ -658,8 +659,13 @@ const Chat = () => {
       {confirmDelete && currentUser.role === "ADMIN" && (
         <div className="px-6 py-2 bg-red-50 border-b border-red-100 flex items-center gap-2">
           <span className="text-sm text-red-700">
-            Delete <strong>#{tracks.find((t) => t.id === activeTrackId)?.name || "this track"}</strong>?
-            All messages and pinned items will be permanently removed. This cannot be undone.
+            Delete{" "}
+            <strong>
+              #
+              {tracks.find((t) => t.id === activeTrackId)?.name || "this track"}
+            </strong>
+            ? All messages and pinned items will be permanently removed. This
+            cannot be undone.
           </span>
           <button
             className="ml-auto px-3 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700"
@@ -667,7 +673,8 @@ const Chat = () => {
               const toDelete = activeTrackId;
               try {
                 await deleteTrack(toDelete);
-                const next = tracks.find((t) => t.id !== toDelete)?.id || "track-general";
+                const next =
+                  tracks.find((t) => t.id !== toDelete)?.id || "track-general";
                 setActiveTrackId(next);
               } catch {
                 // context rolls back + toast shown via interceptor
@@ -686,189 +693,190 @@ const Chat = () => {
           </button>
         </div>
       )}
-      {manageMembers && currentUser.role === "ADMIN" && (() => {
-        const activeTrack = tracks.find((t) => t.id === activeTrackId);
-        const memberIds = new Set(activeTrack?.members ?? []);
-        const query = memberSearch.trim().toLowerCase();
-        const matchesQuery = (u: typeof users[number]) =>
-          !query ||
-          u.name.toLowerCase().includes(query) ||
-          u.email.toLowerCase().includes(query);
-        const inTrack = users.filter((u) => memberIds.has(u.id) && matchesQuery(u));
-        const availableToAdd = users.filter(
-          (u) => !memberIds.has(u.id) && matchesQuery(u)
-        );
+      {manageMembers &&
+        currentUser.role === "ADMIN" &&
+        (() => {
+          const activeTrack = tracks.find((t) => t.id === activeTrackId);
+          const memberIds = new Set(activeTrack?.members ?? []);
+          const query = memberSearch.trim().toLowerCase();
+          const matchesQuery = (u: (typeof users)[number]) =>
+            !query ||
+            u.name.toLowerCase().includes(query) ||
+            u.email.toLowerCase().includes(query);
+          const inTrack = users.filter(
+            (u) => memberIds.has(u.id) && matchesQuery(u),
+          );
+          const availableToAdd = users.filter(
+            (u) => !memberIds.has(u.id) && matchesQuery(u),
+          );
 
-        const handleAdd = (userId: string) =>
-          addMemberToTrack(activeTrackId, userId).catch(() => {});
-        const handleRemove = (userId: string) =>
-          removeMemberFromTrack(activeTrackId, userId).catch(() => {});
+          const handleAdd = (userId: string) =>
+            addMemberToTrack(activeTrackId, userId).catch(() => {});
+          const handleRemove = (userId: string) =>
+            removeMemberFromTrack(activeTrackId, userId).catch(() => {});
 
-        const renderRow = (
-          u: typeof users[number],
-          kind: "in" | "out"
-        ) => {
-          const presenceStatus = presence[u.id]?.inHuddleTrackId
-            ? ("in-huddle" as const)
-            : ((presence[u.id]?.status || "offline") as any);
-          const isSelf = u.id === currentUser.id;
-          return (
-            <div
-              key={u.id}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-200/60 dark:border-white/10 bg-white/60 dark:bg-white/[0.02] hover:border-indigo-500/30 transition-colors"
-            >
-              <Avatar
-                src={u.avatar}
-                name={u.name}
-                size="sm"
-                status={presenceStatus}
-                showStatusDot
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
-                    {u.name}
-                    {isSelf && (
-                      <span className="ml-1.5 text-[10px] text-slate-400">
-                        (you)
+          const renderRow = (u: (typeof users)[number], kind: "in" | "out") => {
+            const presenceStatus = presence[u.id]?.inHuddleTrackId
+              ? ("in-huddle" as const)
+              : ((presence[u.id]?.status || "offline") as any);
+            const isSelf = u.id === currentUser.id;
+            return (
+              <div
+                key={u.id}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60 dark:bg-white/[0.02] hover:border-indigo-500/30 transition-colors"
+              >
+                <Avatar
+                  src={u.avatar}
+                  name={u.name}
+                  size="sm"
+                  status={presenceStatus}
+                  showStatusDot
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
+                      {u.name}
+                      {isSelf && (
+                        <span className="ml-1.5 text-[10px] text-slate-400">
+                          (you)
+                        </span>
+                      )}
+                    </p>
+                    {u.role === "ADMIN" && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        Admin
                       </span>
                     )}
+                    {presence[u.id]?.inHuddleTrackId && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/30">
+                        In huddle
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {u.email}
                   </p>
-                  {u.role === "ADMIN" && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                      Admin
-                    </span>
-                  )}
-                  {presence[u.id]?.inHuddleTrackId && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/30">
-                      In huddle
-                    </span>
-                  )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {u.email}
-                </p>
+                {kind === "in" ? (
+                  <button
+                    onClick={() => handleRemove(u.id)}
+                    disabled={isSelf}
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-700 dark:text-red-300 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={
+                      isSelf ? "You can't remove yourself" : "Remove from track"
+                    }
+                  >
+                    <UserMinus size={12} />
+                    Remove
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleAdd(u.id)}
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-indigo-200 dark:border-indigo-400/30 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 inline-flex items-center gap-1"
+                  >
+                    <UserPlus size={12} />
+                    Add
+                  </button>
+                )}
               </div>
-              {kind === "in" ? (
+            );
+          };
+
+          return (
+            <div className="px-6 py-4 bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Manage members
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {memberIds.size} member{memberIds.size === 1 ? "" : "s"} in
+                    #{activeTrack?.name}
+                  </p>
+                </div>
                 <button
-                  onClick={() => handleRemove(u.id)}
-                  disabled={isSelf}
-                  className="px-2.5 py-1.5 text-xs rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-700 dark:text-red-300 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={isSelf ? "You can't remove yourself" : "Remove from track"}
+                  className="px-3 py-1.5 text-xs rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5"
+                  onClick={() => {
+                    setManageMembers(false);
+                    setMemberSearch("");
+                  }}
                 >
-                  <UserMinus size={12} />
-                  Remove
+                  Done
                 </button>
-              ) : (
-                <button
-                  onClick={() => handleAdd(u.id)}
-                  className="px-2.5 py-1.5 text-xs rounded-lg border border-indigo-200 dark:border-indigo-400/30 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 inline-flex items-center gap-1"
-                >
-                  <UserPlus size={12} />
-                  Add
-                </button>
-              )}
+              </div>
+
+              <div className="relative mb-3">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  type="text"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Search members by name or email"
+                  className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-white/80 dark:bg-white/[0.04] focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      In this track · {inTrack.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                    {inTrack.length === 0 ? (
+                      <p className="text-xs text-slate-400 px-3 py-3">
+                        {query ? "No matches." : "No members yet."}
+                      </p>
+                    ) : (
+                      inTrack.map((u) => renderRow(u, "in"))
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Available to add · {availableToAdd.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                    {availableToAdd.length === 0 ? (
+                      <p className="text-xs text-slate-400 px-3 py-3">
+                        {query
+                          ? "No matches."
+                          : "Everyone's already in this track."}
+                      </p>
+                    ) : (
+                      availableToAdd.map((u) => renderRow(u, "out"))
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           );
-        };
-
-        return (
-          <div className="px-6 py-4 bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl border-b border-slate-200/60 dark:border-white/10">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div>
-                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-100">
-                  Manage members
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {memberIds.size} member{memberIds.size === 1 ? "" : "s"} in
-                  #{activeTrack?.name}
-                </p>
-              </div>
-              <button
-                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5"
-                onClick={() => {
-                  setManageMembers(false);
-                  setMemberSearch("");
-                }}
-              >
-                Done
-              </button>
-            </div>
-
-            <div className="relative mb-3">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="text"
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search members by name or email"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-white/80 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    In this track · {inTrack.length}
-                  </span>
-                </div>
-                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
-                  {inTrack.length === 0 ? (
-                    <p className="text-xs text-slate-400 px-3 py-3">
-                      {query ? "No matches." : "No members yet."}
-                    </p>
-                  ) : (
-                    inTrack.map((u) => renderRow(u, "in"))
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Available to add · {availableToAdd.length}
-                  </span>
-                </div>
-                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
-                  {availableToAdd.length === 0 ? (
-                    <p className="text-xs text-slate-400 px-3 py-3">
-                      {query
-                        ? "No matches."
-                        : "Everyone's already in this track."}
-                    </p>
-                  ) : (
-                    availableToAdd.map((u) => renderRow(u, "out"))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-      <div className="h-16 border-b border-slate-100 dark:border-white/10 flex items-center justify-between px-6 bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl shrink-0">
+        })()}
+      <div className="h-16 flex items-center justify-between px-6 bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl shrink-0 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)]">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-600 dark:text-indigo-200 border border-indigo-500/20 rounded-xl flex items-center justify-center shadow-sm">
             <Hash size={20} />
           </div>
           <div>
             <div className="flex items-center gap-3">
-              <select
+              <Select<string>
                 value={activeTrackId}
-                onChange={(e) => setActiveTrackId(e.target.value)}
-                className="text-sm font-bold text-slate-800 dark:text-slate-100 bg-white/60 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 rounded-lg px-2 py-1 backdrop-blur-sm"
-                aria-label="Select chat track"
-              >
-                {tracks.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    #{t.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setActiveTrackId}
+                className="!px-2.5 !py-1 text-sm !font-semibold text-slate-800 dark:text-slate-100"
+                ariaLabel="Select chat track"
+                options={tracks.map((t) => ({
+                  value: t.id,
+                  label: `#${t.name}`,
+                }))}
+              />
               <button
                 onClick={() => setCreating((v) => !v)}
                 className={`p-1 rounded border border-transparent ${
@@ -889,9 +897,7 @@ const Chat = () => {
                     : "text-slate-400 cursor-not-allowed"
                 }`}
                 title="Open huddle for this track"
-                disabled={
-                  !canPost
-                }
+                disabled={!canPost}
               >
                 <PhoneCall size={18} />
               </button>
@@ -911,7 +917,7 @@ const Chat = () => {
                 onClick={() => {
                   setRenaming(true);
                   setRenameValue(
-                    tracks.find((t) => t.id === activeTrackId)?.name || ""
+                    tracks.find((t) => t.id === activeTrackId)?.name || "",
                   );
                 }}
                 className={`p-1 rounded border border-transparent ${
@@ -971,7 +977,7 @@ const Chat = () => {
       </div>
 
       {creating && currentUser.role === "ADMIN" && (
-        <div className="px-6 py-2 bg-indigo-50/80 dark:bg-indigo-500/10 backdrop-blur-xl border-b border-indigo-100 dark:border-indigo-400/20 flex items-center gap-2">
+        <div className="px-6 py-2 bg-indigo-500/10 dark:bg-indigo-500/10 backdrop-blur-xl flex items-center gap-2">
           <input
             type="text"
             value={newTrackName}
@@ -1014,9 +1020,9 @@ const Chat = () => {
 
       {/* Pinned Messages */}
       {hasPinnedForTrack && (
-        <div className="fixed top-[7.5rem] md:top-16 left-0 right-0 md:left-64 z-30 px-4 md:px-6 bg-white dark:bg-surface border-b border-slate-100 dark:border-slate-800 h-14 flex items-center">
+        <div className="fixed top-[7.5rem] md:top-16 left-0 right-0 md:left-64 z-30 px-4 md:px-6 bg-white dark:bg-surface h-14 flex items-center shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <div
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 bg-slate-50 dark:bg-dark "
             role="button"
             tabIndex={0}
             onClick={() => {
@@ -1063,8 +1069,8 @@ const Chat = () => {
                 {primaryPinned?.content?.trim()
                   ? primaryPinned.content.trim()
                   : primaryPinned?.attachments?.length
-                  ? "Attachment"
-                  : "(no content)"}
+                    ? "Attachment"
+                    : "(no content)"}
               </div>
             </div>
             <button
@@ -1092,7 +1098,7 @@ const Chat = () => {
           .filter(
             (m) =>
               (m.trackId || tracks[0]?.id || "track-general") ===
-                activeTrackId && !m.parentId
+                activeTrackId && !m.parentId,
           )
           .map((msg, index, filtered) => {
             const isMe = msg.userId === currentUser.id;
@@ -1148,7 +1154,7 @@ const Chat = () => {
                       className={`px-4 py-2 rounded-2xl text-sm ${
                         isMe
                           ? "bg-indigo-600 text-white rounded-tr-none"
-                          : "bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-none shadow-sm"
+                          : "bg-white dark:bg-surface text-slate-800 dark:text-slate-100 rounded-tl-none shadow-sm"
                       }`}
                       onMouseDown={() => {
                         if (longPressTimerRef.current)
@@ -1207,7 +1213,7 @@ const Chat = () => {
                       })()}
                     {reactionPopoverId === msg.id && (
                       <div
-                        className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-full shadow z-20 px-2 py-1"
+                        className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white dark:bg-surface rounded-full shadow z-20 px-2 py-1"
                         onMouseLeave={() => setReactionPopoverId(null)}
                       >
                         {reactionQuick.map((e) => (
@@ -1290,7 +1296,7 @@ const Chat = () => {
                                   className={`w-80 max-w-full flex items-center gap-3 px-3 py-2 rounded-2xl ${
                                     isMe
                                       ? "bg-indigo-600 text-white"
-                                      : "bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 shadow-sm"
+                                      : "bg-white dark:bg-surface text-slate-800 dark:text-slate-100 shadow-sm"
                                   }`}
                                 >
                                   <audio
@@ -1313,7 +1319,7 @@ const Chat = () => {
                                           }));
                                           a.removeEventListener(
                                             "timeupdate",
-                                            handler
+                                            handler,
                                           );
                                           try {
                                             a.currentTime = 0;
@@ -1321,7 +1327,7 @@ const Chat = () => {
                                         };
                                         a.addEventListener(
                                           "timeupdate",
-                                          handler
+                                          handler,
                                         );
                                         try {
                                           a.currentTime = 1e9;
@@ -1402,7 +1408,7 @@ const Chat = () => {
                                 key={att.id}
                                 href={att.url}
                                 download={att.name}
-                                className="inline-flex items-center gap-2 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface hover:bg-slate-50 dark:hover:bg-slate-800 text-sm shadow-sm"
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded bg-white dark:bg-surface hover:bg-slate-50 dark:hover:bg-slate-800 text-sm shadow-sm"
                               >
                                 <span className="text-slate-700 dark:text-slate-200 truncate max-w-[220px]">
                                   {att.name}
@@ -1423,7 +1429,7 @@ const Chat = () => {
                       } top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}
                     >
                       <button
-                        className="p-1 rounded bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        className="p-1 rounded bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
                         title="React"
                         onClick={() => setEmojiPickerId(msg.id)}
                       >
@@ -1479,10 +1485,10 @@ const Chat = () => {
                       {/* Removed "React" and "More" text buttons per request */}
                       <button
                         className={`
-                          isMe
-                            ? "text-white/80 hover:text-white"
-                            : "text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"
-                        } underline`}
+ isMe
+ ? "text-white/80 hover:text-white"
+ : "text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"
+ } underline`}
                         onClick={() => setReplyToId(msg.id)}
                       >
                         Reply
@@ -1490,7 +1496,7 @@ const Chat = () => {
                     </div>
                     {reactionPopoverId === msg.id && (
                       <div
-                        className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-full shadow z-20 px-2 py-1"
+                        className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white dark:bg-surface rounded-full shadow z-20 px-2 py-1"
                         onMouseLeave={() => setReactionPopoverId(null)}
                       >
                         {reactionQuick.map((e) => (
@@ -1514,15 +1520,15 @@ const Chat = () => {
                           isMe
                             ? "left-0 -translate-x-full"
                             : "right-0 translate-x-full"
-                        } top-0 mt-2 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 w-64 max-w-[90vw]`}
+                        } top-0 mt-2 bg-white dark:bg-surface rounded-xl shadow-lg z-20 w-64 max-w-[90vw]`}
                       >
-                        <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                        <div className="p-2 ">
                           <input
                             type="text"
                             value={emojiQuery}
                             onChange={(e) => setEmojiQuery(e.target.value)}
                             placeholder="Search emoji"
-                            className="w-full px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-dark text-slate-900 dark:text-slate-100"
+                            className="w-full px-2 py-1 text-sm rounded bg-white dark:bg-dark text-slate-900 dark:text-slate-100"
                           />
                         </div>
                         <div className="px-2 pt-2 flex items-center gap-1 flex-wrap">
@@ -1547,7 +1553,7 @@ const Chat = () => {
                                 ? e
                                     .toLowerCase()
                                     .includes(emojiQuery.trim().toLowerCase())
-                                : true
+                                : true,
                             )
                             .map((e) => (
                               <button
@@ -1565,7 +1571,7 @@ const Chat = () => {
                               </button>
                             ))}
                         </div>
-                        <div className="p-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="p-2 ">
                           <button
                             className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs"
                             onClick={() => {
@@ -1594,7 +1600,7 @@ const Chat = () => {
                             className={`px-3 py-2 rounded-2xl text-sm ${
                               cmMe
                                 ? "bg-indigo-50 dark:bg-indigo-500/20 text-slate-900 dark:text-slate-100"
-                                : "bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 shadow-sm"
+                                : "bg-white dark:bg-surface text-slate-800 dark:text-slate-100 shadow-sm"
                             }`}
                           >
                             {renderMessageText(cm.content)}
@@ -1610,7 +1616,7 @@ const Chat = () => {
       </div>
 
       {/* Input Area */}
-      <div className="p-3 md:p-4 bg-white dark:bg-surface border-t border-slate-100 dark:border-slate-800 shrink-0">
+      <div className="p-3 md:p-4 bg-white dark:bg-surface shrink-0 shadow-[0_-1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_-1px_0_rgba(255,255,255,0.03)]">
         {pendingFiles.length > 0 && (
           <div className="max-w-4xl mx-auto pb-2">
             <div className="flex gap-3 flex-wrap">
@@ -1620,13 +1626,13 @@ const Chat = () => {
                 return (
                   <div
                     key={`${f.name}-${idx}`}
-                    className="relative border border-slate-200 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-dark shadow-sm"
+                    className="relative rounded-lg p-2 bg-white dark:bg-dark shadow-sm"
                   >
                     <button
                       className="absolute -top-2 -right-2 bg-slate-800 text-white rounded-full w-5 h-5 text-xs"
                       onClick={() =>
                         setPendingFiles((prev) =>
-                          prev.filter((_, i) => i !== idx)
+                          prev.filter((_, i) => i !== idx),
                         )
                       }
                       type="button"
@@ -1646,8 +1652,8 @@ const Chat = () => {
                           {f.type.startsWith("video/")
                             ? "Video"
                             : f.type.startsWith("audio/")
-                            ? "Audio"
-                            : "File"}
+                              ? "Audio"
+                              : "File"}
                         </div>
                       )}
                       <div className="min-w-0">
@@ -1682,9 +1688,7 @@ const Chat = () => {
             ref={inputRef}
             onChange={(e) => {
               setInputText(e.target.value);
-              if (
-                canPost
-              ) {
+              if (canPost) {
                 setTyping(activeTrackId, currentUser.id, true);
                 if (typingTimeoutRef.current)
                   window.clearTimeout(typingTimeoutRef.current);
@@ -1699,9 +1703,7 @@ const Chat = () => {
               tracks.find((t) => t.id === activeTrackId)?.name || "general-team"
             }...`}
             className="w-full pl-4 pr-24 py-3 bg-slate-100 dark:bg-dark border-none rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-dark transition-all outline-none text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-            disabled={
-              !canPost
-            }
+            disabled={!canPost}
             onBlur={() => {
               setTyping(activeTrackId, currentUser.id, false);
               if (typingTimeoutRef.current)
@@ -1716,7 +1718,7 @@ const Chat = () => {
               } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 setMentionIndex(
-                  (i) => (i - 1 + mentionItems.length) % mentionItems.length
+                  (i) => (i - 1 + mentionItems.length) % mentionItems.length,
                 );
               } else if (e.key === "Enter" || e.key === "Tab") {
                 e.preventDefault();
@@ -1727,7 +1729,7 @@ const Chat = () => {
             }}
           />
           {mentionOpen && mentionItems.length > 0 && (
-            <div className="absolute left-0 right-24 top-full mt-1 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-20 max-h-64 overflow-auto">
+            <div className="absolute left-0 right-24 bottom-full mb-2 bg-white dark:bg-[#0f172a] rounded-2xl shadow-xl z-20 max-h-64 overflow-auto backdrop-blur-sm">
               <ul className="py-1">
                 {mentionItems.map((it, idx) => (
                   <li key={`${it.kind}-${it.id}-${idx}`}>
@@ -1773,18 +1775,15 @@ const Chat = () => {
               }`}
               onClick={() => (isRecording ? stopRecording() : startRecording())}
               title={isRecording ? "Stop recording" : "Start recording"}
-              disabled={
-                !canPost
-              }
+              disabled={!canPost}
             >
               {isRecording ? <Square size={18} /> : <Mic size={18} />}
             </button>
             {isRecording && (
               <span className="inline-flex items-center gap-1 text-[11px] text-red-600 font-medium">
                 <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-                Recording{" "}
-                {String(Math.floor(recSeconds / 60)).padStart(2, "0")}:
-                {String(recSeconds % 60).padStart(2, "0")}
+                Recording {String(Math.floor(recSeconds / 60)).padStart(2, "0")}
+                :{String(recSeconds % 60).padStart(2, "0")}
               </span>
             )}
             <button
@@ -1805,7 +1804,7 @@ const Chat = () => {
                 const files = Array.from(e.target.files || []) as File[];
                 if (files.length === 0) return;
                 const filtered = files.filter(
-                  (f) => f.size <= 20 * 1024 * 1024
+                  (f) => f.size <= 20 * 1024 * 1024,
                 );
                 setPendingFiles((prev) => [...prev, ...filtered]);
                 e.currentTarget.value = "";
@@ -1815,8 +1814,7 @@ const Chat = () => {
           <button
             type="submit"
             disabled={
-              (!inputText.trim() && pendingFiles.length === 0) ||
-              !canPost
+              (!inputText.trim() && pendingFiles.length === 0) || !canPost
             }
             className="absolute right-2 top-2 p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:hover:bg-indigo-600"
           >
@@ -1839,7 +1837,8 @@ const Chat = () => {
           </div>
         )}
         <p className="max-w-4xl mx-auto text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-          Type @ to mention a person or track · Enter to send · Shift+Enter for a new line
+          Type @ to mention a person or track · Enter to send · Shift+Enter for
+          a new line
         </p>
         {typingOthers.length > 0 && (
           <p className="max-w-4xl mx-auto text-[11px] text-slate-500 dark:text-slate-400 mt-1">
@@ -1864,7 +1863,7 @@ const Chat = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => setConfirmDeleteMsgId(null)}
           />
-          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg w-[90%] max-w-md p-5 z-50">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
               Delete message?
             </h3>
@@ -1873,7 +1872,7 @@ const Chat = () => {
             </p>
             <div className="flex justify-end gap-2">
               <button
-                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="px-4 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                 onClick={() => setConfirmDeleteMsgId(null)}
               >
                 Cancel

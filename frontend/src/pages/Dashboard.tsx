@@ -15,10 +15,20 @@ import {
 } from "recharts";
 import { CheckCircle2, Clock, AlertCircle, Briefcase } from "lucide-react";
 
+const SOFT_TOOLTIP = {
+  background: "rgba(15,23,42,0.78)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: 14,
+  color: "#f8fafc",
+  backdropFilter: "blur(10px)",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+  padding: "10px 14px",
+  fontSize: 12,
+};
+
 const Dashboard = () => {
   const { tasks, users } = useApp();
 
-  // Calculate Stats
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(
     (t) => t.status === TaskStatus.DONE
@@ -27,27 +37,28 @@ const Dashboard = () => {
     (t) => t.status === TaskStatus.IN_PROGRESS
   ).length;
   const todoTasks = tasks.filter((t) => t.status === TaskStatus.TODO).length;
+  const reviewTasks = tasks.filter((t) => t.status === TaskStatus.REVIEW).length;
 
+  // Soft pastel palette matching brand gradient (indigo → purple → pink → emerald)
   const pieData = [
-    { name: "To Do", value: todoTasks, color: "#94a3b8" },
-    { name: "In Progress", value: inProgressTasks, color: "#3b82f6" },
-    {
-      name: "Review",
-      value: tasks.filter((t) => t.status === TaskStatus.REVIEW).length,
-      color: "#eab308",
-    },
-    { name: "Done", value: completedTasks, color: "#22c55e" },
+    { name: "To Do", value: todoTasks, color: "#cbd5e1" }, // slate-300
+    { name: "In Progress", value: inProgressTasks, color: "#a5b4fc" }, // indigo-300
+    { name: "Review", value: reviewTasks, color: "#fcd34d" }, // amber-300
+    { name: "Done", value: completedTasks, color: "#86efac" }, // emerald-300
   ].filter((d) => d.value > 0);
 
-  // Tasks by Assignee
   const barData = users.map((user) => {
     const userTasks = tasks.filter((t) => t.assigneeId === user.id);
     return {
-      name: user.name.split(" ")[0], // First name
+      name: user.name.split(" ")[0],
       Tasks: userTasks.length,
       Completed: userTasks.filter((t) => t.status === TaskStatus.DONE).length,
     };
   });
+
+  const completionRate = totalTasks
+    ? Math.round((completedTasks / totalTasks) * 100)
+    : 0;
 
   const StatCard = ({
     title,
@@ -62,20 +73,20 @@ const Dashboard = () => {
     iconBg: string;
     iconColor: string;
   }) => (
-    <div className="glass-panel p-5 rounded-2xl shadow-sm flex items-center justify-between overflow-hidden relative group hover:border-indigo-500/30 transition-colors">
-      <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full blur-3xl opacity-20 group-hover:opacity-30 transition-opacity bg-indigo-500 pointer-events-none" />
+    <div className="glass-panel p-5 rounded-2xl flex items-center justify-between overflow-hidden relative group transition-all hover:-translate-y-0.5">
+      <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full blur-3xl opacity-15 group-hover:opacity-25 transition-opacity bg-indigo-400 pointer-events-none" />
       <div className="relative">
-        <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mb-1">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 font-medium mb-1.5">
           {title}
         </p>
-        <h3 className="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+        <h3 className="text-3xl font-semibold tracking-tight text-slate-800 dark:text-white">
           {value}
         </h3>
       </div>
       <div
-        className={`relative w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 ${iconBg} ${iconColor}`}
+        className={`relative w-12 h-12 rounded-2xl flex items-center justify-center ${iconBg} ${iconColor}`}
       >
-        <Icon size={22} />
+        <Icon size={22} strokeWidth={1.75} />
       </div>
     </div>
   );
@@ -83,10 +94,10 @@ const Dashboard = () => {
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-brand">
+        <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-brand">
           Project Overview
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 font-light">
           Live snapshot of your team's workload and progress.
         </p>
       </div>
@@ -103,8 +114,8 @@ const Dashboard = () => {
           title="In Progress"
           value={inProgressTasks}
           icon={Clock}
-          iconBg="bg-blue-500/10"
-          iconColor="text-blue-500 dark:text-blue-300"
+          iconBg="bg-sky-500/10"
+          iconColor="text-sky-500 dark:text-sky-300"
         />
         <StatCard
           title="Completed"
@@ -115,7 +126,7 @@ const Dashboard = () => {
         />
         <StatCard
           title="Pending Review"
-          value={tasks.filter((t) => t.status === TaskStatus.REVIEW).length}
+          value={reviewTasks}
           icon={AlertCircle}
           iconBg="bg-amber-500/10"
           iconColor="text-amber-500 dark:text-amber-300"
@@ -123,74 +134,134 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-panel p-6 rounded-2xl shadow-sm h-96">
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+        {/* Donut chart — soft palette, centered completion rate */}
+        <div className="glass-panel p-6 rounded-2xl h-96 relative">
+          <h3 className="text-base font-medium text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2 tracking-tight">
             <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-indigo-400 to-purple-400" />
             Task Distribution
           </h3>
-          <ResponsiveContainer width="100%" height="88%">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 font-light">
+            {completionRate}% complete overall
+          </p>
+          <ResponsiveContainer width="100%" height="82%">
             <PieChart>
+              <defs>
+                {pieData.map((entry, i) => (
+                  <linearGradient
+                    key={`g-${i}`}
+                    id={`pie-grad-${i}`}
+                    x1="0"
+                    y1="0"
+                    x2="1"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor={entry.color} stopOpacity={0.95} />
+                    <stop offset="100%" stopColor={entry.color} stopOpacity={0.7} />
+                  </linearGradient>
+                ))}
+              </defs>
               <Pie
                 data={pieData}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={5}
+                innerRadius={68}
+                outerRadius={96}
+                paddingAngle={3}
                 dataKey="value"
-                stroke="none"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth={1}
               >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                {pieData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={`url(#pie-grad-${index})`} />
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{
-                  background: "rgba(15,23,42,0.9)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 8,
-                  color: "#fff",
-                }}
-                itemStyle={{ color: "#fff" }}
+                contentStyle={SOFT_TOOLTIP}
+                itemStyle={{ color: "#f8fafc" }}
               />
-              <Legend verticalAlign="bottom" height={36} />
+              <Legend
+                verticalAlign="bottom"
+                height={32}
+                iconType="circle"
+                wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+              />
             </PieChart>
           </ResponsiveContainer>
+          {/* Centered total count */}
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-[58%] flex flex-col items-center">
+            <span className="text-3xl font-semibold tracking-tight text-slate-800 dark:text-white">
+              {totalTasks}
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 font-medium">
+              Total
+            </span>
+          </div>
         </div>
 
-        <div className="glass-panel p-6 rounded-2xl shadow-sm h-96">
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+        {/* Horizontal bars — softer, more readable with long names */}
+        <div className="glass-panel p-6 rounded-2xl h-96">
+          <h3 className="text-base font-medium text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2 tracking-tight">
             <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
             Team Workload
           </h3>
-          <ResponsiveContainer width="100%" height="88%">
-            <BarChart data={barData}>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 font-light">
+            Assigned vs. completed per member
+          </p>
+          <ResponsiveContainer width="100%" height="86%">
+            <BarChart
+              data={barData}
+              layout="vertical"
+              margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              barCategoryGap="30%"
+            >
+              <defs>
+                <linearGradient id="bar-tasks" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#a5b4fc" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#c4b5fd" stopOpacity={0.7} />
+                </linearGradient>
+                <linearGradient id="bar-done" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#86efac" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#6ee7b7" stopOpacity={0.7} />
+                </linearGradient>
+              </defs>
               <XAxis
+                type="number"
+                stroke="#94a3b8"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <YAxis
+                type="category"
                 dataKey="name"
                 stroke="#94a3b8"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-              />
-              <YAxis
-                stroke="#94a3b8"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
+                width={70}
               />
               <Tooltip
-                cursor={{ fill: "rgba(99,102,241,0.08)" }}
-                contentStyle={{
-                  background: "rgba(15,23,42,0.9)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 8,
-                  color: "#fff",
-                }}
-                itemStyle={{ color: "#fff" }}
+                cursor={{ fill: "rgba(165,180,252,0.06)" }}
+                contentStyle={SOFT_TOOLTIP}
+                itemStyle={{ color: "#f8fafc" }}
               />
-              <Legend />
-              <Bar dataKey="Tasks" fill="#818cf8" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Completed" fill="#34d399" radius={[4, 4, 0, 0]} />
+              <Legend
+                iconType="circle"
+                wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+              />
+              <Bar
+                dataKey="Tasks"
+                fill="url(#bar-tasks)"
+                radius={[10, 10, 10, 10]}
+                barSize={12}
+              />
+              <Bar
+                dataKey="Completed"
+                fill="url(#bar-done)"
+                radius={[10, 10, 10, 10]}
+                barSize={12}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

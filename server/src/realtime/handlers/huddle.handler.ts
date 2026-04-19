@@ -26,14 +26,19 @@ const getParticipants = (roomId: string): HuddleParticipant[] =>
   );
 
 export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
-  const userId = socket.data.userId;
+  const { userId, workspaceId } = socket.data;
+
+  // Namespace the huddle room by workspace so a trackId collision across
+  // tenants can never connect two different workspaces' audio.
+  const roomKey = (roomId: string) => `ws:${workspaceId}:huddle:${roomId}`;
 
   // ─── Join huddle room ────────────────────────────────────────────────────────
   socket.on("huddle:join", ({ roomId }) => {
-    socket.join(`huddle:${roomId}`);
+    const key = roomKey(roomId);
+    socket.join(key);
 
-    if (!huddleRooms.has(roomId)) huddleRooms.set(roomId, new Map());
-    const room = huddleRooms.get(roomId)!;
+    if (!huddleRooms.has(key)) huddleRooms.set(key, new Map());
+    const room = huddleRooms.get(key)!;
     const alreadyInRoom = room.has(userId);
     room.set(userId, {
       userId,
@@ -42,44 +47,42 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
       socketId: socket.id,
     });
 
-    const participants = getParticipants(roomId);
+    const participants = getParticipants(key);
 
     // Send current room state to the new joiner
     socket.emit("huddle:state", { roomId, participants });
 
-    // Tell everyone else a new user joined
-    socket.to(`huddle:${roomId}`).emit("huddle:user-joined", {
+    // Tell everyone else in this huddle a new user joined
+    socket.to(key).emit("huddle:user-joined", {
       roomId,
       userId,
       participants,
     });
 
-    // Tell the whole workspace this user is now in a huddle so non-participants
-    // can surface "in huddle" badges + light up the track as active.
     if (!alreadyInRoom) {
-      setInHuddle(getIO(), userId, roomId);
-      logger.info(`${userId} joined huddle ${roomId}`);
+      setInHuddle(getIO(), userId, workspaceId, roomId);
+      logger.info(`${userId} joined huddle ${roomId} ws=${workspaceId}`);
     }
   });
 
   // ─── Leave huddle room ───────────────────────────────────────────────────────
   const leaveHuddle = (roomId: string) => {
-    const wasInRoom = huddleRooms.get(roomId)?.has(userId) ?? false;
-    huddleRooms.get(roomId)?.delete(userId);
-    if (huddleRooms.get(roomId)?.size === 0) huddleRooms.delete(roomId);
+    const key = roomKey(roomId);
+    const wasInRoom = huddleRooms.get(key)?.has(userId) ?? false;
+    huddleRooms.get(key)?.delete(userId);
+    if (huddleRooms.get(key)?.size === 0) huddleRooms.delete(key);
 
-    socket.leave(`huddle:${roomId}`);
+    socket.leave(key);
 
-    const participants = getParticipants(roomId);
-    getIO().to(`huddle:${roomId}`).emit("huddle:user-left", {
+    const participants = getParticipants(key);
+    getIO().to(key).emit("huddle:user-left", {
       roomId,
       userId,
       participants,
     });
 
     if (wasInRoom) {
-      // Clear the huddle pin so the workspace-wide badges drop.
-      setInHuddle(getIO(), userId, null);
+      setInHuddle(getIO(), userId, workspaceId, null);
     }
   };
 
@@ -90,50 +93,55 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
 
   // ─── WebRTC signaling relay ──────────────────────────────────────────────────
   socket.on("huddle:offer", ({ roomId, toUserId, sdp }) => {
-    const target = huddleRooms.get(roomId)?.get(toUserId);
+    const target = huddleRooms.get(roomKey(roomId))?.get(toUserId);
     if (!target) return;
     getIO().to(target.socketId).emit("huddle:offer", { fromUserId: userId, sdp });
   });
 
   socket.on("huddle:answer", ({ roomId, toUserId, sdp }) => {
-    const target = huddleRooms.get(roomId)?.get(toUserId);
+    const target = huddleRooms.get(roomKey(roomId))?.get(toUserId);
     if (!target) return;
     getIO().to(target.socketId).emit("huddle:answer", { fromUserId: userId, sdp });
   });
 
   socket.on("huddle:ice", ({ roomId, toUserId, candidate }) => {
-    const target = huddleRooms.get(roomId)?.get(toUserId);
+    const target = huddleRooms.get(roomKey(roomId))?.get(toUserId);
     if (!target) return;
     getIO().to(target.socketId).emit("huddle:ice", { fromUserId: userId, candidate });
   });
 
   // ─── Mute / hand raise ───────────────────────────────────────────────────────
   socket.on("huddle:mute", ({ roomId, muted }) => {
-    const participant = huddleRooms.get(roomId)?.get(userId);
+    const key = roomKey(roomId);
+    const participant = huddleRooms.get(key)?.get(userId);
     if (!participant) return;
     participant.muted = muted;
 
-    getIO().to(`huddle:${roomId}`).emit("huddle:state", {
+    getIO().to(key).emit("huddle:state", {
       roomId,
-      participants: getParticipants(roomId),
+      participants: getParticipants(key),
     });
   });
 
   socket.on("huddle:hand", ({ roomId, raised }) => {
-    const participant = huddleRooms.get(roomId)?.get(userId);
+    const key = roomKey(roomId);
+    const participant = huddleRooms.get(key)?.get(userId);
     if (!participant) return;
     participant.handRaised = raised;
 
-    getIO().to(`huddle:${roomId}`).emit("huddle:state", {
+    getIO().to(key).emit("huddle:state", {
       roomId,
-      participants: getParticipants(roomId),
+      participants: getParticipants(key),
     });
   });
 
   // ─── Auto-leave all huddles on disconnect ────────────────────────────────────
   socket.on("disconnect", () => {
-    for (const [roomId, participants] of huddleRooms.entries()) {
+    for (const [key, participants] of huddleRooms.entries()) {
       if (participants.has(userId)) {
+        // Extract roomId from "ws:<wsId>:huddle:<roomId>" format
+        const match = key.match(/^ws:[^:]+:huddle:(.+)$/);
+        const roomId = match ? match[1] : key;
         leaveHuddle(roomId);
       }
     }

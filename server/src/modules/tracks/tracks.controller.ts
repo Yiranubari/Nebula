@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "../../core/BaseController";
 import { TracksService } from "./tracks.service";
+import { requireWorkspace } from "../../utils/requireWorkspace";
 
 export class TracksController extends BaseController {
   constructor(private readonly tracksService: TracksService) {
@@ -8,12 +9,19 @@ export class TracksController extends BaseController {
   }
 
   createTrack = async (req: Request, res: Response) => {
-    const track = await this.tracksService.createTrack(req.user!.id, req.body);
+    const track = await this.tracksService.createTrack(
+      req.user!.id,
+      requireWorkspace(req),
+      req.body
+    );
     this.created(res, track);
   };
 
   getTracks = async (req: Request, res: Response) => {
-    const tracks = await this.tracksService.getTracksForUser(req.user!.id);
+    const tracks = await this.tracksService.getTracksForUser(
+      req.user!.id,
+      requireWorkspace(req)
+    );
     this.ok(res, tracks);
   };
 
@@ -21,6 +29,7 @@ export class TracksController extends BaseController {
     const track = await this.tracksService.getTrackById(
       req.params.id as string,
       req.user!.id,
+      requireWorkspace(req),
       req.user!.role
     );
     this.ok(res, track);
@@ -31,6 +40,7 @@ export class TracksController extends BaseController {
       req.params.id as string,
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.body.userId
     );
     this.created(res, member);
@@ -41,6 +51,7 @@ export class TracksController extends BaseController {
       req.params.id as string,
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.params.userId as string
     );
     this.noContent(res);
@@ -51,6 +62,7 @@ export class TracksController extends BaseController {
       req.params.id as string,
       req.user!.id,
       req.user!.role,
+      requireWorkspace(req),
       req.body
     );
     this.ok(res, track);
@@ -60,7 +72,8 @@ export class TracksController extends BaseController {
     await this.tracksService.deleteTrack(
       req.params.id as string,
       req.user!.id,
-      req.user!.role
+      req.user!.role,
+      requireWorkspace(req)
     );
     this.noContent(res);
   };

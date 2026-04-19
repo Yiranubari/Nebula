@@ -92,4 +92,5 @@ export interface SocketData {
   userId: string;
   userName: string;
   role: "ADMIN" | "MEMBER";
+  workspaceId: string;
 }

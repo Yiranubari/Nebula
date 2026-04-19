@@ -25,9 +25,7 @@ const Profile = () => {
 
   const canSave = useMemo(() => {
     return (
-      name.trim().length > 0 &&
-      email.trim().length > 0 &&
-      isValidEmail(email)
+      name.trim().length > 0 && email.trim().length > 0 && isValidEmail(email)
     );
   }, [name, email]);
 
@@ -144,7 +142,9 @@ const Profile = () => {
             />
             <div className="text-sm text-slate-700 dark:text-slate-200">
               <p className="font-semibold">{viewUser.name}</p>
-              <p className="text-slate-500 dark:text-slate-400">{viewUser.email}</p>
+              <p className="text-slate-500 dark:text-slate-400">
+                {viewUser.email}
+              </p>
               <p className="text-slate-500 dark:text-slate-400 capitalize">
                 {viewUser.role.toLowerCase()}
               </p>
@@ -170,7 +170,7 @@ const Profile = () => {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100"
+                className="px-4 py-3 bg-slate-50 dark:bg-dark rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100"
               />
             </div>
             <div className="flex flex-col">
@@ -181,7 +181,7 @@ const Profile = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100"
+                className="px-4 py-3 bg-slate-50 dark:bg-dark rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100"
               />
             </div>
             <div className="md:col-span-2 flex justify-end mt-2">
@@ -202,7 +202,7 @@ const Profile = () => {
               <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
                 Full Name
               </label>
-              <div className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100">
+              <div className="px-4 py-3 bg-slate-50 dark:bg-dark rounded-lg text-slate-900 dark:text-slate-100">
                 {viewUser.name}
               </div>
             </div>
@@ -210,7 +210,7 @@ const Profile = () => {
               <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
                 Email
               </label>
-              <div className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100">
+              <div className="px-4 py-3 bg-slate-50 dark:bg-dark rounded-lg text-slate-900 dark:text-slate-100">
                 {viewUser.email}
               </div>
             </div>
@@ -249,7 +249,7 @@ const Profile = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => setConfirmDelete(false)}
           />
-          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg w-[90%] max-w-md p-5 z-50">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
               Delete your account?
             </h3>
@@ -259,7 +259,7 @@ const Profile = () => {
             </p>
             <div className="flex justify-end gap-2">
               <button
-                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                className="px-4 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                 onClick={() => setConfirmDelete(false)}
               >
                 Cancel

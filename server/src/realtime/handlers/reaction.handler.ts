@@ -37,15 +37,20 @@ export const registerReactionHandlers = (_io: NebServer, _socket: NebSocket) => 
  */
 export const emitReactionNotification = async (
   reactorId: string,
+  workspaceId: string,
   messageId: string,
   emoji: string
 ) => {
   try {
-    const message = await prisma.message.findUnique({ where: { id: messageId }, select: { userId: true } });
+    const message = await prisma.message.findFirst({
+      where: { id: messageId, workspaceId },
+      select: { userId: true },
+    });
     if (!message || message.userId === reactorId) return; // Don't notify yourself
 
     const notification = await prisma.notification.create({
       data: {
+        workspaceId,
         type: "REACTION",
         messageId,
         emoji,

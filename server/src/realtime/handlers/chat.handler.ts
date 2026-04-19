@@ -34,9 +34,17 @@ const canAccessTrack = async (
   return !!member;
 };
 
+/** Require that the track exists and belongs to the caller's workspace. */
+const trackInWorkspace = async (trackId: string, workspaceId: string) => {
+  const track = await prisma.track.findFirst({
+    where: { id: trackId, workspaceId },
+    select: { id: true },
+  });
+  return !!track;
+};
+
 export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
-  const userId = socket.data.userId;
-  const role = socket.data.role;
+  const { userId, role, workspaceId } = socket.data;
 
   // ─── Send message ────────────────────────────────────────────────────────────
   socket.on("message:send", async (payload) => {
@@ -54,6 +62,11 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
         return;
       }
 
+      if (!(await trackInWorkspace(trackId, workspaceId))) {
+        emitError(socket, "Track not found");
+        return;
+      }
+
       if (!(await canAccessTrack(trackId, userId, role))) {
         emitError(socket, "Not a track member");
         return;
@@ -61,6 +74,7 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
 
       const message = await prisma.message.create({
         data: {
+          workspaceId,
           content,
           userId,
           trackId,
@@ -85,8 +99,8 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   socket.on("message:react", async ({ messageId, emoji }) => {
     try {
       if (!messageId || !emoji) return;
-      const message = await prisma.message.findUnique({
-        where: { id: messageId },
+      const message = await prisma.message.findFirst({
+        where: { id: messageId, workspaceId },
       });
       if (!message) return;
 
@@ -124,8 +138,8 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   socket.on("message:read", async ({ messageId }) => {
     try {
       if (!messageId) return;
-      const message = await prisma.message.findUnique({
-        where: { id: messageId },
+      const message = await prisma.message.findFirst({
+        where: { id: messageId, workspaceId },
       });
       if (!message) return;
 
@@ -153,8 +167,8 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   socket.on("message:pin", async ({ messageId, pinned }) => {
     try {
       if (!messageId) return;
-      const message = await prisma.message.findUnique({
-        where: { id: messageId },
+      const message = await prisma.message.findFirst({
+        where: { id: messageId, workspaceId },
       });
       if (!message) return;
 

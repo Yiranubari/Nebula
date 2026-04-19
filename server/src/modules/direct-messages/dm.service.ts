@@ -3,24 +3,32 @@ import { SendDmDto } from "./dm.schemas";
 import { AppError } from "../../utils/AppError";
 
 export class DmService extends BaseService {
-  async sendDm(fromUserId: string, toUserId: string, data: SendDmDto) {
+  async sendDm(
+    fromUserId: string,
+    workspaceId: string,
+    toUserId: string,
+    data: SendDmDto
+  ) {
     if (fromUserId === toUserId) {
       throw new AppError(400, "You cannot send a direct message to yourself");
     }
 
-    // Check if target user exists
+    // Both users must live in the same workspace — DMs never cross tenants.
     const targetUser = await this.prisma.user.findUnique({
       where: { id: toUserId },
+      select: { id: true, workspaceId: true },
     });
-
-    if (!targetUser) throw new AppError(404, "Target user not found");
+    if (!targetUser || targetUser.workspaceId !== workspaceId) {
+      throw new AppError(404, "Target user not found in this workspace");
+    }
 
     return this.prisma.directMessage.create({
       data: {
+        workspaceId,
         content: data.content,
         fromUserId,
         toUserId,
-        readBy: [fromUserId], // Sender implicitly reads it
+        readBy: [fromUserId],
       },
       include: {
         from: { select: { id: true, name: true, avatar: true } },
@@ -31,12 +39,14 @@ export class DmService extends BaseService {
 
   async getConversation(
     userId: string,
+    workspaceId: string,
     targetUserId: string,
     limit = 50,
     cursor?: string
   ) {
     const messages = await this.prisma.directMessage.findMany({
       where: {
+        workspaceId,
         OR: [
           { fromUserId: userId, toUserId: targetUserId },
           { fromUserId: targetUserId, toUserId: userId },
@@ -57,16 +67,15 @@ export class DmService extends BaseService {
       nextCursor = nextItem?.id;
     }
 
-    // Reverse for ascending chronological display
     return {
       items: messages.reverse(),
       nextCursor,
     };
   }
 
-  async deleteOwnDm(userId: string, messageId: string) {
-    const message = await this.prisma.directMessage.findUnique({
-      where: { id: messageId },
+  async deleteOwnDm(userId: string, workspaceId: string, messageId: string) {
+    const message = await this.prisma.directMessage.findFirst({
+      where: { id: messageId, workspaceId },
     });
 
     if (!message) throw new AppError(404, "Message not found");

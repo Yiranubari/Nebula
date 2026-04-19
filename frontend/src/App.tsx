@@ -64,32 +64,6 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-/**
- * Small theme toggle that floats in the top-right of the main content on
- * desktop. Lives outside the sidebar so that the sidebar can stay focused
- * on navigation. The mobile top-bar has its own inline version.
- */
-const DesktopThemeToggle = () => {
-  const { isAuthenticated } = useApp();
-  const { theme, toggleTheme } = useTheme();
-  const location = useLocation();
-  const isPublicRoute = ["/", "/login", "/signup", "/landing"].includes(
-    location.pathname
-  );
-  if (!isAuthenticated || isPublicRoute) return null;
-  return (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      className="hidden md:inline-flex fixed top-4 right-4 z-40 h-9 w-9 items-center justify-center rounded-full bg-white/80 dark:bg-white/5 backdrop-blur border border-slate-200/70 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 shadow-sm"
-      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      title={theme === "dark" ? "Light mode" : "Dark mode"}
-    >
-      {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-    </button>
-  );
-};
-
 const ConnectionBanner = () => {
   const { isAuthenticated } = useApp();
   const { isConnected, isReconnecting, hasAttempted } = useSocket();
@@ -189,7 +163,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Mobile top bar */}
       {isAuthenticated && !isPublicRoute ? (
-        <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 dark:bg-dark/60 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/10 z-40 flex items-center px-4">
+        <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 dark:bg-dark/60 backdrop-blur-xl shadow-[0_4px_18px_-8px_rgba(15,23,42,0.12)] dark:shadow-[0_4px_24px_-10px_rgba(0,0,0,0.5)] z-40 flex items-center px-4">
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
@@ -214,7 +188,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <button
             type="button"
             onClick={toggleTheme}
-            className="ml-auto p-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
+            className="ml-auto p-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/5 dark:hover:bg-white/[0.06] transition-colors"
             aria-label={
               theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
             }
@@ -313,7 +287,6 @@ function App() {
               <HashRouter>
                 <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
                 <ConnectionBanner />
-                <DesktopThemeToggle />
                 <Layout>
                   <ErrorBoundary>
                     <Routes>

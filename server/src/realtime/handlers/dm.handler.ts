@@ -18,7 +18,7 @@ const dmRoom = (a: string, b: string) =>
   `dm:${[a, b].sort().join("-")}`;
 
 export const registerDmHandlers = (_io: NebServer, socket: NebSocket) => {
-  const userId = socket.data.userId;
+  const { userId, workspaceId } = socket.data;
 
   // Auto-join own private room so notifications are sent even when not in a DM view
   socket.join(`user:${userId}`);
@@ -37,18 +37,19 @@ export const registerDmHandlers = (_io: NebServer, socket: NebSocket) => {
         return;
       }
 
-      // Validate recipient exists to avoid a misleading silent failure
+      // Recipient must live in the same workspace — DMs never cross tenants.
       const recipient = await prisma.user.findUnique({
         where: { id: toUserId },
-        select: { id: true },
+        select: { id: true, workspaceId: true },
       });
-      if (!recipient) {
+      if (!recipient || recipient.workspaceId !== workspaceId) {
         socket.emit("error" as any, { message: "Recipient does not exist" });
         return;
       }
 
       const message = await prisma.directMessage.create({
         data: {
+          workspaceId,
           content,
           fromUserId: userId,
           toUserId,
@@ -76,7 +77,9 @@ export const registerDmHandlers = (_io: NebServer, socket: NebSocket) => {
   // ─── React to DM ─────────────────────────────────────────────────────────────
   socket.on("dm:react", async ({ messageId, emoji }) => {
     try {
-      const message = await prisma.directMessage.findUnique({ where: { id: messageId } });
+      const message = await prisma.directMessage.findFirst({
+        where: { id: messageId, workspaceId },
+      });
       if (!message) return;
 
       // Only sender or receiver can react

@@ -58,7 +58,13 @@ interface AppContextType {
 
   // Auth
   login: (email: string, password?: string) => Promise<boolean>;
-  signup: (name: string, email: string, password?: string, avatar?: string) => Promise<boolean>;
+  signup: (
+    name: string,
+    email: string,
+    password?: string,
+    avatar?: string,
+    workspaceName?: string
+  ) => Promise<boolean>;
   verifyOtp: (email: string, otp: string) => Promise<boolean>;
   logout: () => Promise<void>;
 
@@ -139,6 +145,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     name: "",
     email: "",
     role: "MEMBER",
+    avatar: "",
+    workspaceId: null,
   });
 
   const [users, setUsers]                       = useState<User[]>([]);
@@ -352,10 +360,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const signup = async (name: string, email: string, password?: string, avatar?: string): Promise<boolean> => {
+  const signup = async (
+    name: string,
+    email: string,
+    password?: string,
+    avatar?: string,
+    workspaceName?: string
+  ): Promise<boolean> => {
     try {
-      const res = await api.post("/auth/register", { name, email, password, avatar });
-      toast.success(res.data.message || "Account created — please verify your email.");
+      const res = await api.post("/auth/register", {
+        name,
+        email,
+        password,
+        avatar,
+        ...(workspaceName ? { workspaceName } : {}),
+      });
+      toast.success(
+        res.data.message || "Workspace created — please verify your email."
+      );
       return true;
     } catch {
       return false;
@@ -379,7 +401,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(AUTH_KEY, "false");
     disconnectSocket();
     setIsAuthenticated(false);
-    setCurrentUser({ id: "", name: "", email: "", role: "MEMBER" });
+    setCurrentUser({
+      id: "",
+      name: "",
+      email: "",
+      role: "MEMBER",
+      avatar: "",
+      workspaceId: null,
+    });
     setUsers([]); setTasks([]); setMessages([]); setTracks([]);
     setNotifications([]); setDirectMessages([]); setPresence({});
     window.location.hash = "#/login";

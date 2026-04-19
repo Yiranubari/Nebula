@@ -22,7 +22,7 @@ const Notifications = () => {
     ? notifications
     : notifications.filter(
         (n) =>
-          n.requesterId === currentUser.id || n.recipientId === currentUser.id
+          n.requesterId === currentUser.id || n.recipientId === currentUser.id,
       );
 
   const sorted = visible.slice().sort((a, b) => {
@@ -76,10 +76,10 @@ const Notifications = () => {
                 n.status === "PENDING"
                   ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-200 dark:border-amber-500/30"
                   : n.status === "APPROVED"
-                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/20 dark:text-green-200 dark:border-green-500/30"
-                  : n.status === "REJECTED"
-                  ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-200 dark:border-red-500/30"
-                  : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
+                    ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/20 dark:text-green-200 dark:border-green-500/30"
+                    : n.status === "REJECTED"
+                      ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-200 dark:border-red-500/30"
+                      : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700";
 
               return (
                 <li key={n.id} className="p-4 flex items-center gap-3">
@@ -170,7 +170,7 @@ const Notifications = () => {
                           {n.emoji ? (
                             <>
                               {" "}
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs align-middle">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs align-middle">
                                 {n.emoji}
                               </span>
                             </>
@@ -215,13 +215,13 @@ const Notifications = () => {
                   {(n.type === "MENTION" || n.type === "REACTION") &&
                     n.messageId && (
                       <button
-                        className="ml-2 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-xs"
+                        className="ml-2 px-2 py-1 rounded text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-xs"
                         onClick={() => {
                           markNotificationRead(n.id).catch(() => {});
                           navigate({
                             pathname: "/chat",
                             search: `?trackId=${encodeURIComponent(
-                              n.trackId || "track-general"
+                              n.trackId || "track-general",
                             )}&messageId=${encodeURIComponent(n.messageId)}`,
                           });
                         }}
@@ -231,7 +231,7 @@ const Notifications = () => {
                     )}
                   {!n.read && (
                     <button
-                      className="ml-2 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-xs"
+                      className="ml-2 px-2 py-1 rounded text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-xs"
                       onClick={() => {
                         markNotificationRead(n.id).catch(() => {});
                       }}

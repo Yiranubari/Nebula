@@ -51,10 +51,10 @@ const Inbox: React.FC = () => {
   // Audio playback UI (WhatsApp-style)
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState<Record<string, number>>(
-    {}
+    {},
   );
   const [audioDuration, setAudioDuration] = useState<Record<string, number>>(
-    {}
+    {},
   );
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const playbackUrlsRef = useRef<Record<string, string>>({});
@@ -62,7 +62,7 @@ const Inbox: React.FC = () => {
   // WhatsApp-style quick reactions (same as Team Chat)
   const reactionQuick = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
   const [reactionPopoverId, setReactionPopoverId] = useState<string | null>(
-    null
+    null,
   );
   const [emojiPickerId, setEmojiPickerId] = useState<string | null>(null);
   const [emojiQuery, setEmojiQuery] = useState("");
@@ -202,7 +202,7 @@ const Inbox: React.FC = () => {
     if (!withUserId) return [] as string[];
     const key = dmThreadKey(currentUser.id, withUserId);
     const others = (typingByDm[key] || []).filter(
-      (id) => id !== currentUser.id
+      (id) => id !== currentUser.id,
     );
     return others
       .map((id) => users.find((u) => u.id === id)?.name || "")
@@ -234,7 +234,7 @@ const Inbox: React.FC = () => {
 
   const selectedUser = useMemo(
     () => users.find((u) => u.id === withUserId) || null,
-    [withUserId, users]
+    [withUserId, users],
   );
 
   const thread = useMemo(() => {
@@ -244,7 +244,7 @@ const Inbox: React.FC = () => {
       .filter(
         (m) =>
           (m.fromUserId === me && m.toUserId === selectedUser.id) ||
-          (m.fromUserId === selectedUser.id && m.toUserId === me)
+          (m.fromUserId === selectedUser.id && m.toUserId === me),
       )
       .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   }, [directMessages, currentUser.id, selectedUser]);
@@ -309,7 +309,7 @@ const Inbox: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
       const preferredMime = MediaRecorder.isTypeSupported(
-        "audio/webm;codecs=opus"
+        "audio/webm;codecs=opus",
       )
         ? "audio/webm;codecs=opus"
         : "audio/webm";
@@ -389,7 +389,7 @@ const Inbox: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Conversation list */}
         <div className="md:col-span-4 lg:col-span-3 glass-panel rounded-2xl overflow-hidden">
-          <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <div className=" px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300">
             Conversations
           </div>
           <div className="max-h-[60vh] overflow-y-auto">
@@ -399,9 +399,8 @@ const Inbox: React.FC = () => {
                   No conversations yet
                 </p>
                 <p className="mt-1">
-                  Head over to{" "}
-                  <span className="font-medium">Members</span> and start a direct
-                  message with a teammate.
+                  Head over to <span className="font-medium">Members</span> and
+                  start a direct message with a teammate.
                 </p>
               </div>
             )}
@@ -416,7 +415,7 @@ const Inbox: React.FC = () => {
                 <button
                   key={user.id}
                   onClick={() => navigate(`/inbox?with=${user.id}`)}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 last:border-b-0 ${
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 last:border-b-0 ${
                     active ? "bg-indigo-50 dark:bg-indigo-500/20" : ""
                   }`}
                 >
@@ -449,7 +448,7 @@ const Inbox: React.FC = () => {
 
         {/* Thread */}
         <div className="md:col-span-8 lg:col-span-9 glass-panel rounded-2xl flex flex-col min-h-[60vh]">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+          <div className="px-4 py-3 flex items-center gap-3">
             {selectedUser ? (
               <>
                 <Avatar
@@ -629,16 +628,16 @@ const Inbox: React.FC = () => {
                                         };
                                         const onEnd = () => {
                                           setPlayingAudioId((cur) =>
-                                            cur === att.id ? null : cur
+                                            cur === att.id ? null : cur,
                                           );
                                         };
                                         el.addEventListener(
                                           "timeupdate",
-                                          onTime
+                                          onTime,
                                         );
                                         el.addEventListener(
                                           "loadedmetadata",
-                                          onMeta
+                                          onMeta,
                                         );
                                         el.addEventListener("ended", onEnd);
                                       }}
@@ -669,7 +668,7 @@ const Inbox: React.FC = () => {
 
                       {reactionPopoverId === m.id && (
                         <div
-                          className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white dark:bg-surface border border-slate-200 dark:border-slate-700 rounded-full shadow z-20 px-2 py-1"
+                          className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white dark:bg-surface rounded-full shadow z-20 px-2 py-1"
                           onMouseLeave={() => setReactionPopoverId(null)}
                         >
                           {reactionQuick.map((e) => (
@@ -680,7 +679,7 @@ const Inbox: React.FC = () => {
                                 toggleDirectMessageReaction(
                                   m.id,
                                   e,
-                                  currentUser.id
+                                  currentUser.id,
                                 );
                                 setReactionPopoverId(null);
                               }}
@@ -710,7 +709,7 @@ const Inbox: React.FC = () => {
                         } top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}
                       >
                         <button
-                          className="p-1 rounded bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          className="p-1 rounded bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
                           title="React"
                           onClick={() => setEmojiPickerId(m.id)}
                         >
@@ -743,7 +742,7 @@ const Inbox: React.FC = () => {
                                   toggleDirectMessageReaction(
                                     m.id,
                                     e,
-                                    currentUser.id
+                                    currentUser.id,
                                   )
                                 }
                                 title={`${e} ${count || ""}`}
@@ -762,13 +761,13 @@ const Inbox: React.FC = () => {
                               : "right-0 translate-x-full"
                           } top-0 mt-2 glass-panel rounded-2xl shadow-lg z-20 w-64 max-w-[90vw]`}
                         >
-                          <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                          <div className="p-2 ">
                             <input
                               type="text"
                               value={emojiQuery}
                               onChange={(e) => setEmojiQuery(e.target.value)}
                               placeholder="Search emoji"
-                              className="w-full px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-dark text-slate-900 dark:text-slate-100"
+                              className="w-full px-2 py-1 text-sm rounded bg-white dark:bg-dark text-slate-900 dark:text-slate-100"
                             />
                           </div>
                           <div className="px-2 pt-2 flex items-center gap-1 flex-wrap">
@@ -793,7 +792,7 @@ const Inbox: React.FC = () => {
                                   ? e
                                       .toLowerCase()
                                       .includes(emojiQuery.trim().toLowerCase())
-                                  : true
+                                  : true,
                               )
                               .map((e) => (
                                 <button
@@ -803,7 +802,7 @@ const Inbox: React.FC = () => {
                                     toggleDirectMessageReaction(
                                       m.id,
                                       e,
-                                      currentUser.id
+                                      currentUser.id,
                                     );
                                     setEmojiPickerId(null);
                                     setEmojiQuery("");
@@ -815,7 +814,7 @@ const Inbox: React.FC = () => {
                                 </button>
                               ))}
                           </div>
-                          <div className="p-2 border-t border-slate-100 dark:border-slate-800">
+                          <div className="p-2 ">
                             <button
                               className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs"
                               onClick={() => {
@@ -838,7 +837,7 @@ const Inbox: React.FC = () => {
                         ) : (
                           <span className="inline-flex items-center gap-1">
                             {(m.readBy || []).includes(
-                              selectedUser?.id || ""
+                              selectedUser?.id || "",
                             ) ? (
                               <CheckCheck size={13} />
                             ) : (
@@ -854,7 +853,7 @@ const Inbox: React.FC = () => {
                               sendDirectMessage(
                                 selectedUser.id,
                                 m.content || "",
-                                m.attachments
+                                m.attachments,
                               );
                               setDirectMessageStatus(m.id, "sent");
                             }}
@@ -870,7 +869,7 @@ const Inbox: React.FC = () => {
             })}
           </div>
 
-          <div className="border-t border-slate-100 dark:border-slate-800 p-3">
+          <div className=" p-3">
             {dmTypingOthers.length > 0 && (
               <p className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
                 {dmTypingOthers.join(", ")}{" "}
@@ -888,7 +887,7 @@ const Inbox: React.FC = () => {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!selectedUser}
-                className="h-[44px] px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                className="h-[44px] px-3 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                 title="Attach files"
               >
                 <Paperclip size={16} />
@@ -899,7 +898,7 @@ const Inbox: React.FC = () => {
                 className={`h-[44px] px-3 rounded-lg ${
                   isRecording
                     ? "bg-red-600 hover:bg-red-700 text-white"
-                    : "border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    : " text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                 } disabled:opacity-50 inline-flex items-center gap-2`}
                 title={isRecording ? "Stop recording" : "Record voice message"}
               >
@@ -925,7 +924,7 @@ const Inbox: React.FC = () => {
                     ? `Message ${selectedUser.name}`
                     : "Select a conversation"
                 }
-                className="flex-1 min-h-[44px] max-h-40 px-3 py-2 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="flex-1 min-h-[44px] max-h-40 px-3 py-2 bg-slate-50 dark:bg-dark rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 disabled={!selectedUser || isUploading}
                 onBlur={() => {
                   if (!selectedUser) return;
@@ -959,7 +958,7 @@ const Inbox: React.FC = () => {
                 {pendingFiles.map((f, i) => (
                   <span
                     key={`${f.name}-${i}`}
-                    className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                    className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
                   >
                     {f.name}
                   </span>

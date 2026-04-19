@@ -1,5 +1,5 @@
 // Users
-export type { User, Role } from "./user.types";
+export type { User, Role, Workspace } from "./user.types";
 
 // Tasks
 export {

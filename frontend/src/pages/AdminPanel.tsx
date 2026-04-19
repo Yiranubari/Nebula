@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
+import Select from "../components/Select";
 
 const AdminPanel = () => {
   const {
@@ -48,11 +49,11 @@ const AdminPanel = () => {
 
   const verifiedUsers = useMemo(
     () => users.filter((u) => u.isVerified !== false),
-    [users]
+    [users],
   );
   const pendingInvites = useMemo(
     () => users.filter((u) => u.isVerified === false),
-    [users]
+    [users],
   );
 
   const isValidEmail = (s: string) =>
@@ -156,7 +157,7 @@ const AdminPanel = () => {
           {verifiedUsers.map((u) => (
             <div
               key={u.id}
-              className="flex items-center justify-between gap-3 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg"
+              className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg"
             >
               <div className="flex items-center gap-3">
                 <img
@@ -179,13 +180,13 @@ const AdminPanel = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {u.id !== currentUser.id && (
-                  u.role === "ADMIN" ? (
+                {u.id !== currentUser.id &&
+                  (u.role === "ADMIN" ? (
                     <button
                       onClick={() =>
                         setConfirmRoleChange({ userId: u.id, to: "MEMBER" })
                       }
-                      className="px-3 py-1.5 text-xs inline-flex items-center gap-1.5 border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-lg"
+                      className="px-3 py-1.5 text-xs inline-flex items-center gap-1.5 bg-white/60 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-lg"
                       title="Demote to member"
                     >
                       <UserMinus size={13} />
@@ -202,8 +203,7 @@ const AdminPanel = () => {
                       <ShieldCheck size={13} />
                       Promote
                     </button>
-                  )
-                )}
+                  ))}
                 <button
                   onClick={() => setConfirmUserId(u.id)}
                   disabled={deletingUserId === u.id}
@@ -245,7 +245,7 @@ const AdminPanel = () => {
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="teammate@example.com"
-            className="flex-1 px-4 py-3 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm border border-slate-200/70 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            className="flex-1 px-4 py-3 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
           <button
             type="submit"
@@ -280,7 +280,7 @@ const AdminPanel = () => {
             {pendingInvites.map((u) => (
               <div
                 key={u.id}
-                className="flex items-center justify-between gap-3 px-3 py-2.5 border border-slate-200/70 dark:border-white/10 bg-white/40 dark:bg-white/[0.02] rounded-lg"
+                className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white/40 dark:bg-white/[0.02] rounded-lg"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center">
@@ -299,7 +299,7 @@ const AdminPanel = () => {
                   <button
                     onClick={() => handleResendInvite(u.email, u.id)}
                     disabled={resendingId === u.id}
-                    className="px-3 py-1.5 text-xs inline-flex items-center gap-1.5 border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-lg disabled:opacity-60"
+                    className="px-3 py-1.5 text-xs inline-flex items-center gap-1.5 bg-white/60 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 rounded-lg disabled:opacity-60"
                     title="Resend invitation email"
                   >
                     {resendingId === u.id ? (
@@ -332,17 +332,16 @@ const AdminPanel = () => {
               <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
                 Status
               </label>
-              <select
+              <Select<TaskStatus>
                 value={status}
-                onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
-              >
-                {Object.values(TaskStatus).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                onChange={setStatus}
+                className="w-full justify-between !px-4 !py-3"
+                ariaLabel="Status"
+                options={Object.values(TaskStatus).map((s) => ({
+                  value: s,
+                  label: s,
+                }))}
+              />
             </div>
             <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
               Task Title
@@ -352,27 +351,21 @@ const AdminPanel = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Short, action-oriented title"
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
+              className="px-4 py-3 bg-slate-50 dark:bg-dark rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
             />
           </div>
           <div className="flex flex-col">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
               Assignee
             </label>
-            <select
+            <Select<string>
               value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
-            >
-              <option value="" disabled>
-                Select a team member
-              </option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
+              onChange={setAssigneeId}
+              placeholder="Select a team member"
+              className="w-full justify-between !px-4 !py-3"
+              ariaLabel="Assignee"
+              options={users.map((u) => ({ value: u.id, label: u.name }))}
+            />
           </div>
           <div className="md:col-span-2 flex flex-col">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
@@ -383,7 +376,7 @@ const AdminPanel = () => {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Detailed explanation of what needs to be done"
               rows={4}
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
+              className="px-4 py-3 bg-slate-50 dark:bg-dark rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
             />
           </div>
           <div className="flex flex-col">
@@ -395,24 +388,23 @@ const AdminPanel = () => {
               min={1}
               value={estimatedHours}
               onChange={(e) => setEstimatedHours(Number(e.target.value))}
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
+              className="px-4 py-3 bg-slate-50 dark:bg-dark rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
             />
           </div>
           <div className="flex flex-col">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
               Priority
             </label>
-            <select
+            <Select<Priority>
               value={priority}
-              onChange={(e) => setPriority(e.target.value as Priority)}
-              className="px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900 dark:text-slate-100"
-            >
-              {Object.values(Priority).map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
+              onChange={setPriority}
+              className="w-full justify-between !px-4 !py-3"
+              ariaLabel="Priority"
+              options={Object.values(Priority).map((p) => ({
+                value: p,
+                label: p,
+              }))}
+            />
           </div>
         </div>
         {error && <p className="mt-3 text-red-500 text-sm">{error}</p>}
@@ -444,7 +436,7 @@ const AdminPanel = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => setConfirmUserId(null)}
           />
-          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg w-[90%] max-w-md p-5 z-50">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
               Delete member?
             </h3>
@@ -454,7 +446,7 @@ const AdminPanel = () => {
             </p>
             <div className="flex justify-end gap-2">
               <button
-                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                className="px-4 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                 onClick={() => setConfirmUserId(null)}
               >
                 Cancel
@@ -495,10 +487,10 @@ const AdminPanel = () => {
             className="absolute inset-0 bg-black/40"
             onClick={() => !isUpdatingRole && setConfirmRoleChange(null)}
           />
-          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-[90%] max-w-md p-5 z-50">
+          <div className="relative bg-white dark:bg-surface rounded-lg shadow-lg w-[90%] max-w-md p-5 z-50">
             {(() => {
               const target = users.find(
-                (u) => u.id === confirmRoleChange.userId
+                (u) => u.id === confirmRoleChange.userId,
               );
               const toAdmin = confirmRoleChange.to === "ADMIN";
               return (
@@ -522,7 +514,7 @@ const AdminPanel = () => {
                   </p>
                   <div className="flex justify-end gap-2">
                     <button
-                      className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:opacity-60"
+                      className="px-4 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:opacity-60"
                       disabled={isUpdatingRole}
                       onClick={() => setConfirmRoleChange(null)}
                     >
@@ -555,8 +547,8 @@ const AdminPanel = () => {
                       {isUpdatingRole
                         ? "Updating…"
                         : toAdmin
-                        ? "Promote"
-                        : "Demote"}
+                          ? "Promote"
+                          : "Demote"}
                     </button>
                   </div>
                 </>

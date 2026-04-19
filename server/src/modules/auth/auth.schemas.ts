@@ -5,6 +5,13 @@ export const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters long"),
   avatar: z.string().url().or(z.literal("")).optional(),
+  /** Name of the workspace this user is creating. Optional — defaults to
+   * "{name}'s Workspace" when omitted. */
+  workspaceName: z
+    .string()
+    .min(2, "Workspace name must be at least 2 characters long")
+    .max(60, "Workspace name must be at most 60 characters long")
+    .optional(),
 });
 
 export type RegisterDto = z.infer<typeof registerSchema>;

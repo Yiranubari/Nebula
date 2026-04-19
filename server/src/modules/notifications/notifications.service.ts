@@ -3,20 +3,21 @@ import { UpdateNotificationDto } from "./notifications.schemas";
 import { AppError } from "../../utils/AppError";
 
 export class NotificationsService extends BaseService {
-  async getMyNotifications(userId: string) {
+  async getMyNotifications(userId: string, workspaceId: string) {
     return this.prisma.notification.findMany({
-      where: { recipientId: userId },
+      where: { workspaceId, recipientId: userId },
       orderBy: { createdAt: "desc" },
     });
   }
 
   async updateNotification(
     userId: string,
+    workspaceId: string,
     notificationId: string,
     data: UpdateNotificationDto
   ) {
-    const notification = await this.prisma.notification.findUnique({
-      where: { id: notificationId },
+    const notification = await this.prisma.notification.findFirst({
+      where: { id: notificationId, workspaceId },
     });
 
     if (!notification) throw new AppError(404, "Notification not found");
@@ -33,9 +34,13 @@ export class NotificationsService extends BaseService {
     });
   }
 
-  async deleteNotification(userId: string, notificationId: string) {
-    const notification = await this.prisma.notification.findUnique({
-      where: { id: notificationId },
+  async deleteNotification(
+    userId: string,
+    workspaceId: string,
+    notificationId: string
+  ) {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id: notificationId, workspaceId },
     });
 
     if (!notification) throw new AppError(404, "Notification not found");
@@ -51,9 +56,9 @@ export class NotificationsService extends BaseService {
     });
   }
 
-  async markAllRead(userId: string) {
+  async markAllRead(userId: string, workspaceId: string) {
     const { count } = await this.prisma.notification.updateMany({
-      where: { recipientId: userId, read: false },
+      where: { workspaceId, recipientId: userId, read: false },
       data: { read: true },
     });
     return { updated: count };
