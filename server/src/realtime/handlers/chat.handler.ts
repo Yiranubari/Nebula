@@ -72,6 +72,13 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
         return;
       }
 
+      // Lazy-join the track's socket room. Tracks created/joined AFTER the
+      // socket connected aren't in `socket.rooms` from the initial handshake,
+      // so the sender would otherwise miss their own `message:new` echo.
+      if (!socket.rooms.has(`track:${trackId}`)) {
+        socket.join(`track:${trackId}`);
+      }
+
       const message = await prisma.message.create({
         data: {
           workspaceId,

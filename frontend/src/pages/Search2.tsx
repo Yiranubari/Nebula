@@ -191,7 +191,7 @@ export default function SearchPage() {
         </p>
       </div>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4 mb-4">
-        <div className="flex items-center gap-2 flex-1 bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 flex-1 glass-panel rounded-lg px-3 py-2">
           <SearchIcon
             size={18}
             className="text-slate-500 dark:text-slate-400"
@@ -231,7 +231,7 @@ export default function SearchPage() {
         </div>
         <div className="flex items-center gap-2">
           <Filter size={18} className="text-slate-500 dark:text-slate-400" />
-          <div className="flex rounded-lg bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
+          <div className="flex glass-panel rounded-lg overflow-hidden">
             {(["All", "Messages", "Files", "Tasks"] as Category[]).map((c) => (
               <button
                 key={c}
@@ -267,7 +267,7 @@ export default function SearchPage() {
             type="datetime-local"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
+            className="px-3 py-2 text-sm glass-panel rounded-lg text-slate-900 dark:text-slate-100"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -278,7 +278,7 @@ export default function SearchPage() {
             type="datetime-local"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm text-slate-900 dark:text-slate-100"
+            className="px-3 py-2 text-sm glass-panel rounded-lg text-slate-900 dark:text-slate-100"
           />
         </div>
       </div>
@@ -302,7 +302,7 @@ export default function SearchPage() {
                 return (
                   <div
                     key={item.id}
-                    className=" bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
+                    className=" glass-panel rounded-lg p-3"
                   >
                     <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">
                       {track ? `#${track.name}` : "#unknown"} ·{" "}
@@ -351,7 +351,7 @@ export default function SearchPage() {
                     key={`${message.id}-${item.name}-${item.type}-${
                       item.size || 0
                     }`}
-                    className=" bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
+                    className=" glass-panel rounded-lg p-3"
                   >
                     <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">
                       {track ? `#${track.name}` : "#unknown"} ·{" "}
@@ -395,7 +395,7 @@ export default function SearchPage() {
               {taskResults.map(({ item }) => (
                 <div
                   key={item.id}
-                  className=" bg-white/80 dark:bg-white/[0.03] backdrop-blur-sm rounded-lg p-3"
+                  className=" glass-panel rounded-lg p-3"
                 >
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {item.title}
