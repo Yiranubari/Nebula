@@ -20,6 +20,15 @@ export default defineConfig({
           name: "unit",
           include: ["src/**/*.test.ts", "tests/unit/**/*.test.ts"],
           environment: "node",
+          // `src/config/env.ts` uses envalid, which exits the process when
+          // required variables are missing. Provide dummy values so unit
+          // tests that transitively import it don't kill the test runner.
+          env: {
+            NODE_ENV: "test",
+            DATABASE_URL: "postgres://test:test@localhost:5432/test",
+            JWT_SECRET: "test-jwt-secret",
+            JWT_REFRESH_SECRET: "test-jwt-refresh-secret",
+          },
         },
       },
       {

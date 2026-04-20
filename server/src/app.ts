@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import { env } from "./config/env";
 import { isAllowedOrigin } from "./config/cors";
 import { globalRateLimiter } from "./middleware/rateLimit.middleware";
+import { softAuth } from "./middleware/softAuth.middleware";
 import { errorMiddleware } from "./middleware/error.middleware";
 import { requestId } from "./middleware/requestId.middleware";
 import authRoutes from "./modules/auth/auth.routes";
@@ -45,6 +46,9 @@ export function createApp() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+  // softAuth must run BEFORE globalRateLimiter so the limiter can key by
+  // user id (when a valid JWT is present) instead of raw IP.
+  app.use(softAuth);
   app.use(globalRateLimiter);
 
   app.get("/health", (_req, res) => {

@@ -60,48 +60,57 @@ export class AuthService extends BaseService {
     const workspaceName =
       data.workspaceName?.trim() || `${data.name.trim()}'s Workspace`;
 
-    const { user } = await this.prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          name: data.name,
-          email: data.email,
-          passwordHash,
-          role: "ADMIN",
-          avatar: data.avatar || null,
-          otp,
-          otpExpiresAt,
-        },
-      });
+    const { user } = await this.prisma.$transaction(
+      async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            name: data.name,
+            email: data.email,
+            passwordHash,
+            role: "ADMIN",
+            avatar: data.avatar || null,
+            otp,
+            otpExpiresAt,
+          },
+        });
 
-      const workspace = await tx.workspace.create({
-        data: {
-          name: workspaceName,
-          slug: slugify(workspaceName),
-          ownerId: createdUser.id,
-        },
-      });
+        const workspace = await tx.workspace.create({
+          data: {
+            name: workspaceName,
+            slug: slugify(workspaceName),
+            ownerId: createdUser.id,
+          },
+        });
 
-      const updatedUser = await tx.user.update({
-        where: { id: createdUser.id },
-        data: { workspaceId: workspace.id },
-      });
+        const updatedUser = await tx.user.update({
+          where: { id: createdUser.id },
+          data: { workspaceId: workspace.id },
+        });
 
-      // Seed a default #general track so the new workspace isn't empty when
-      // the admin first logs in. The track is flagged isDefault so invitees
-      // auto-join it on account activation.
-      const general = await tx.track.create({
-        data: {
-          name: "general",
-          isDefault: true,
-          workspaceId: workspace.id,
-        },
-      });
-      await tx.trackMember.create({
-        data: { trackId: general.id, userId: updatedUser.id },
-      });
+        // Seed a default #general track so the new workspace isn't empty when
+        // the admin first logs in. The track is flagged isDefault so invitees
+        // auto-join it on account activation.
+        const general = await tx.track.create({
+          data: {
+            name: "general",
+            isDefault: true,
+            workspaceId: workspace.id,
+          },
+        });
+        await tx.trackMember.create({
+          data: { trackId: general.id, userId: updatedUser.id },
+        });
 
-      return { user: updatedUser };
-    });
+        return { user: updatedUser };
+      },
+      {
+        // Neon's serverless pooler can take 2-4 seconds to wake a cold branch.
+        // Five sequential queries at ~1s each comfortably blows the default 5s
+        // interactive transaction window, so we give the whole thing 20s.
+        maxWait: 10_000,
+        timeout: 20_000,
+      }
+    );
 
     const { subject, text, html } = verifyOtpEmail(otp);
     await sendMail(user.email, subject, text, html);

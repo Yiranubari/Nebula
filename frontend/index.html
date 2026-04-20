@@ -82,66 +82,66 @@
         color: transparent;
       }
 
-      /* Glass panel surfaces — borderless, elevated by soft layered shadows */
+      /* Glass panel surfaces — borderless, elevated by soft layered shadows.
+         box-shadow uses !important because the Tailwind CDN injects utilities
+         (e.g. `shadow-sm`) after this stylesheet, so a plain declaration would
+         lose the cascade race when markup combines `glass-panel shadow-sm`. */
       .glass-panel {
-        background-color: rgba(255, 255, 255, 0.75);
+        background-color: rgba(255, 255, 255, 0.8);
         backdrop-filter: blur(14px);
         border: 0;
         box-shadow:
-          0 1px 3px rgba(15, 23, 42, 0.08),
-          0 12px 32px -10px rgba(15, 23, 42, 0.16);
+          0 2px 6px rgba(15, 23, 42, 0.14),
+          0 20px 44px -10px rgba(15, 23, 42, 0.28) !important;
       }
       html.dark .glass-panel {
-        background-color: rgba(255, 255, 255, 0.025);
-        border: 0;
+        background-color: rgba(255, 255, 255, 0.03);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.04) inset,
-          0 12px 28px -12px rgba(0, 0, 0, 0.55);
+          0 1px 0 rgba(255, 255, 255, 0.06) inset,
+          0 18px 44px -12px rgba(0, 0, 0, 0.75) !important;
       }
       .glass-panel-strong {
-        background-color: rgba(255, 255, 255, 0.92);
+        background-color: rgba(255, 255, 255, 0.94);
         backdrop-filter: blur(18px);
         border: 0;
         box-shadow:
-          0 2px 6px rgba(15, 23, 42, 0.1),
-          0 18px 44px -12px rgba(15, 23, 42, 0.22);
+          0 3px 8px rgba(15, 23, 42, 0.16),
+          0 28px 56px -14px rgba(15, 23, 42, 0.32) !important;
       }
       html.dark .glass-panel-strong {
-        background-color: rgba(255, 255, 255, 0.035);
-        border: 0;
+        background-color: rgba(255, 255, 255, 0.04);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.05) inset,
-          0 16px 40px -16px rgba(0, 0, 0, 0.6);
+          0 1px 0 rgba(255, 255, 255, 0.07) inset,
+          0 24px 56px -16px rgba(0, 0, 0, 0.8) !important;
       }
       /* Borderless soft surface — for cards that should feel like the landing page */
       .soft-surface {
-        background-color: rgba(255, 255, 255, 0.8);
+        background-color: rgba(255, 255, 255, 0.82);
         backdrop-filter: blur(12px);
         border: 0;
         box-shadow:
-          0 1px 3px rgba(15, 23, 42, 0.08),
-          0 8px 24px -10px rgba(15, 23, 42, 0.14);
+          0 2px 5px rgba(15, 23, 42, 0.12),
+          0 14px 32px -10px rgba(15, 23, 42, 0.22) !important;
         transition: background-color 0.2s ease, box-shadow 0.2s ease,
           transform 0.2s ease;
       }
       html.dark .soft-surface {
-        background-color: rgba(255, 255, 255, 0.025);
-        border: 0;
+        background-color: rgba(255, 255, 255, 0.03);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.04) inset,
-          0 8px 20px -10px rgba(0, 0, 0, 0.5);
+          0 1px 0 rgba(255, 255, 255, 0.06) inset,
+          0 12px 28px -10px rgba(0, 0, 0, 0.65) !important;
       }
       .soft-surface:hover {
-        background-color: rgba(255, 255, 255, 0.95);
+        background-color: rgba(255, 255, 255, 0.96);
         box-shadow:
-          0 2px 6px rgba(15, 23, 42, 0.1),
-          0 16px 36px -10px rgba(15, 23, 42, 0.2);
+          0 3px 8px rgba(15, 23, 42, 0.16),
+          0 22px 44px -10px rgba(15, 23, 42, 0.28) !important;
       }
       html.dark .soft-surface:hover {
-        background-color: rgba(255, 255, 255, 0.05);
+        background-color: rgba(255, 255, 255, 0.06);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.07) inset,
-          0 16px 36px -12px rgba(0, 0, 0, 0.6);
+          0 1px 0 rgba(255, 255, 255, 0.08) inset,
+          0 22px 48px -12px rgba(0, 0, 0, 0.8) !important;
       }
 
       /* Atmospheric background — subtle gradient orbs & grid */

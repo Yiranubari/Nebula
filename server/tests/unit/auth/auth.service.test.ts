@@ -21,6 +21,8 @@ vi.mock("../../../src/utils/mailer", () => ({
 
 const service = new AuthService(prismaMock as any);
 
+const WS = "ws1";
+
 const baseUser = {
   id: "u1",
   name: "Alice",
@@ -31,6 +33,16 @@ const baseUser = {
   otp: null,
   otpExpiresAt: null,
   isVerified: true,
+  workspaceId: WS,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const baseWorkspace = {
+  id: WS,
+  name: "Alice's Workspace",
+  slug: "alices-workspace-abc",
+  ownerId: "u1",
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -47,13 +59,44 @@ describe("AuthService.register", () => {
     ).rejects.toThrow(AppError);
   });
 
-  it("creates user and sends OTP email", async () => {
+  it("creates user + workspace + default track and sends OTP email", async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce(null);
-    prismaMock.user.create.mockResolvedValueOnce({ ...baseUser, isVerified: false, otp: "123456" });
+    // Inside the transaction: user.create → workspace.create → user.update → track.create → trackMember.create
+    prismaMock.user.create.mockResolvedValueOnce({
+      ...baseUser,
+      isVerified: false,
+      otp: "123456",
+      workspaceId: null,
+    });
+    prismaMock.workspace.create.mockResolvedValueOnce(baseWorkspace);
+    prismaMock.user.update.mockResolvedValueOnce({
+      ...baseUser,
+      isVerified: false,
+      otp: "123456",
+      workspaceId: WS,
+    });
+    prismaMock.track.create.mockResolvedValueOnce({
+      id: "tr1",
+      workspaceId: WS,
+      name: "general",
+      isDefault: true,
+      createdAt: new Date(),
+    });
+    prismaMock.trackMember.create.mockResolvedValueOnce({ trackId: "tr1", userId: "u1" });
 
-    const result = await service.register({ name: "Alice", email: "alice@test.com", password: "pw123456" });
+    const result = await service.register({
+      name: "Alice",
+      email: "alice@test.com",
+      password: "pw123456",
+    });
     expect(result.message).toContain("verification code");
     expect(prismaMock.user.create).toHaveBeenCalledOnce();
+    expect(prismaMock.workspace.create).toHaveBeenCalledOnce();
+    expect(prismaMock.track.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ workspaceId: WS, isDefault: true }),
+      })
+    );
   });
 });
 
@@ -104,6 +147,8 @@ describe("AuthService.verifyOtp", () => {
       otpExpiresAt: new Date(Date.now() + 60_000),
     });
     prismaMock.user.update.mockResolvedValueOnce(baseUser);
+    // joinDefaultTracks looks up default tracks in the user's workspace
+    prismaMock.track.findMany.mockResolvedValueOnce([]);
     prismaMock.refreshToken.create.mockResolvedValueOnce({});
 
     const result = await service.verifyOtp({ email: "alice@test.com", otp: "123456" });
