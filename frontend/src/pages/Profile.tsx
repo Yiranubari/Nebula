@@ -5,6 +5,7 @@ import Avatar from "../components/Avatar";
 import Spinner from "../components/Spinner";
 import { UserCircle, Image as ImageIcon, Trash2 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
+import { uploadsService } from "../services/uploads.service";
 
 const Profile = () => {
   const { currentUser, users, updateCurrentUser, removeUser } = useApp();
@@ -19,18 +20,24 @@ const Profile = () => {
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const isValidEmail = (s: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
   const canSave = useMemo(() => {
     return (
-      name.trim().length > 0 && email.trim().length > 0 && isValidEmail(email)
+      name.trim().length > 0 &&
+      email.trim().length > 0 &&
+      isValidEmail(email) &&
+      !isUploadingAvatar
     );
-  }, [name, email]);
+  }, [name, email, isUploadingAvatar]);
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Clear the input so selecting the same file twice still fires onChange.
+    e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       const msg = "Please select a valid image file.";
@@ -45,13 +52,25 @@ const Profile = () => {
       toast.error(msg);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setAvatarUrl(result);
-      setError("");
-    };
-    reader.readAsDataURL(file);
+
+    setError("");
+    setIsUploadingAvatar(true);
+    // Show an instant local preview while the upload is in flight so the UI
+    // feels responsive. ObjectURL is cheap compared to reading a base64 copy
+    // into state, and we revoke it as soon as the real URL lands.
+    const previewUrl = URL.createObjectURL(file);
+    const previousUrl = avatarUrl;
+    setAvatarUrl(previewUrl);
+    try {
+      const uploaded = await uploadsService.upload(file);
+      setAvatarUrl(uploaded.url);
+    } catch {
+      toast.error("Could not upload photo.");
+      setAvatarUrl(previousUrl);
+    } finally {
+      URL.revokeObjectURL(previewUrl);
+      setIsUploadingAvatar(false);
+    }
   };
 
   const onSave = async () => {

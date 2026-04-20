@@ -16,6 +16,8 @@ import {
   Smile,
 } from "lucide-react";
 import type { Attachment } from "../types";
+import { uploadsService } from "../services/uploads.service";
+import toast from "react-hot-toast";
 
 const Inbox: React.FC = () => {
   const {
@@ -273,20 +275,20 @@ const Inbox: React.FC = () => {
     setIsUploading(true);
     try {
       const atts: Attachment[] = [];
-      for (const f of pendingFiles) {
-        const url = await new Promise<string>((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onerror = () => reject(new Error("read failed"));
-          fr.onload = () => resolve(String(fr.result));
-          fr.readAsDataURL(f);
-        });
-        atts.push({
-          id: `${Date.now()}-${f.name}`,
-          name: f.name,
-          size: f.size,
-          type: f.type || "application/octet-stream",
-          url,
-        });
+      try {
+        for (const f of pendingFiles) {
+          const uploaded = await uploadsService.upload(f);
+          atts.push({
+            id: `${Date.now()}-${f.name}`,
+            name: f.name,
+            size: f.size,
+            type: f.type || "application/octet-stream",
+            url: uploaded.url,
+          });
+        }
+      } catch {
+        toast.error("File upload failed — message not sent.");
+        return;
       }
       sendDirectMessage(selectedUser.id, trimmed, atts);
       setText("");
@@ -323,7 +325,7 @@ const Inbox: React.FC = () => {
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) recordingChunksRef.current.push(e.data);
       };
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         if (recTimerRef.current) {
           window.clearInterval(recTimerRef.current);
           recTimerRef.current = null;
@@ -331,31 +333,29 @@ const Inbox: React.FC = () => {
         const blob = new Blob(recordingChunksRef.current, {
           type: preferredMime,
         });
-        const fr = new FileReader();
-        fr.onload = () => {
-          const url = String(fr.result);
+        const cleanup = () => {
+          setIsRecording(false);
+          setRecSeconds(0);
+          recordingChunksRef.current = [];
+          mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+          mediaStreamRef.current = null;
+        };
+        const filename = `voice-note-${Date.now()}.webm`;
+        try {
+          const uploaded = await uploadsService.upload(blob, filename);
           const att: Attachment = {
             id: `voice-${Date.now()}`,
-            name: `voice-note-${new Date().toLocaleString()}.webm`,
+            name: filename,
             size: blob.size,
             type: preferredMime,
-            url,
+            url: uploaded.url,
           };
           sendDirectMessage(selectedUser.id, "", [att]);
-          setIsRecording(false);
-          setRecSeconds(0);
-          recordingChunksRef.current = [];
-          mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
-          mediaStreamRef.current = null;
-        };
-        fr.onerror = () => {
-          setIsRecording(false);
-          setRecSeconds(0);
-          recordingChunksRef.current = [];
-          mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
-          mediaStreamRef.current = null;
-        };
-        fr.readAsDataURL(blob);
+        } catch {
+          toast.error("Could not upload voice note.");
+        } finally {
+          cleanup();
+        }
       };
       recorder.start();
       setIsRecording(true);
