@@ -67,6 +67,10 @@ const ConnectionBanner = () => {
   const { isAuthenticated } = useApp();
   const { isConnected, isReconnecting, hasAttempted } = useSocket();
   const [graceElapsed, setGraceElapsed] = useState(false);
+  const [isBrowserOnline, setIsBrowserOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
+
   useEffect(() => {
     if (!hasAttempted) return;
     setGraceElapsed(false);
@@ -74,9 +78,29 @@ const ConnectionBanner = () => {
     return () => window.clearTimeout(t);
   }, [hasAttempted]);
 
+  useEffect(() => {
+    const onOnline = () => setIsBrowserOnline(true);
+    const onOffline = () => setIsBrowserOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
   if (!isAuthenticated || isConnected) return null;
   if (!hasAttempted) return null;
   if (!isReconnecting && !graceElapsed) return null;
+
+  let message: string;
+  if (!isBrowserOnline) {
+    message = "You appear offline. Messages and updates may not sync.";
+  } else if (isReconnecting) {
+    message = "Reconnecting to Nebula… real-time features are paused.";
+  } else {
+    message = "Realtime connection lost. Messages and updates may not sync.";
+  }
 
   return (
     <div
@@ -84,9 +108,7 @@ const ConnectionBanner = () => {
       aria-live="polite"
       className="fixed top-0 inset-x-0 z-[60] bg-amber-500 text-white text-xs md:text-sm py-1.5 px-4 text-center shadow"
     >
-      {isReconnecting
-        ? "Reconnecting to Nebula… real-time features are paused."
-        : "You appear offline. Messages and updates may not sync."}
+      {message}
     </div>
   );
 };
