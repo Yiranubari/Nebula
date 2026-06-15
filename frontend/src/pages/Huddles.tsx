@@ -76,7 +76,8 @@ const Huddles = () => {
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
                     <span className="inline-flex items-center gap-1">
-                      <Users size={12} /> {members.length} members
+                      <Users size={12} /> {members.length}{" "}
+                      {members.length === 1 ? "member" : "members"}
                     </span>
                     {isLive ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">

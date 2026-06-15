@@ -594,6 +594,12 @@ const Chat = () => {
       );
   }, [messages, activeTrackId, tracks]);
   const hasPinnedForTrack = pinnedForTrack.length > 0;
+  const showPinnedBanner =
+    hasPinnedForTrack &&
+    !manageMembers &&
+    !renaming &&
+    !confirmDelete &&
+    !creating;
   const primaryPinned = pinnedForTrack[0];
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen overflow-hidden bg-transparent">
@@ -916,11 +922,10 @@ const Chat = () => {
               </button>
             </div>
             <p className="text-xs text-slate-500">
-              {
-                (tracks.find((t) => t.id === activeTrackId)?.members || [])
-                  .length
-              }{" "}
-              members
+              {(() => {
+                const n = (tracks.find((t) => t.id === activeTrackId)?.members || []).length;
+                return `${n} ${n === 1 ? "member" : "members"}`;
+              })()}
             </p>
           </div>
         </div>
@@ -990,7 +995,7 @@ const Chat = () => {
         />
       )}
 
-      {hasPinnedForTrack && (
+      {showPinnedBanner && (
         <div className="fixed top-[7.5rem] md:top-16 left-0 right-0 md:left-64 z-30 px-4 md:px-6 bg-white dark:bg-surface h-14 flex items-center shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <div
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 bg-slate-50 dark:bg-dark "
@@ -1060,7 +1065,7 @@ const Chat = () => {
         </div>
       )}
 
-      {hasPinnedForTrack && <div className="shrink-0 h-14" />}
+      {showPinnedBanner && <div className="shrink-0 h-14" />}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-dark">
         {messages
