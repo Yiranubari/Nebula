@@ -16,6 +16,8 @@ import messageRoutes from "./modules/messages/messages.routes";
 import dmRoutes from "./modules/direct-messages/dm.routes";
 import notificationRoutes from "./modules/notifications/notifications.routes";
 import uploadRoutes from "./modules/uploads/uploads.routes";
+import { prisma } from "./db/prisma";
+import { logger } from "./config/logger";
 
 export function createApp() {
   const app = express();
@@ -42,8 +44,20 @@ export function createApp() {
   app.use(softAuth);
   app.use(globalRateLimiter);
 
-  app.get("/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  app.get("/health", async (_req, res) => {
+    const timestamp = new Date().toISOString();
+    try {
+      await Promise.race([
+        prisma.$queryRaw`SELECT 1`,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("db probe timeout")), 5000)
+        ),
+      ]);
+      res.json({ status: "ok", db: "up", timestamp });
+    } catch (err) {
+      logger.warn({ err }, "Health probe: database unreachable");
+      res.status(503).json({ status: "degraded", db: "down", timestamp });
+    }
   });
 
   app.use("/api/auth", authRoutes);
