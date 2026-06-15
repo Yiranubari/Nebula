@@ -190,38 +190,28 @@ export default function HuddleCall({
         {presenting ? (
           <div className="h-full flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1 rounded-2xl overflow-hidden bg-black border border-white/5">
-              {iAmSharing ? (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-5 bg-[#202124] px-6 text-center">
-                  <div className="w-20 h-20 rounded-full bg-white/[0.06] flex items-center justify-center">
-                    <ScreenShare size={36} className="text-slate-200" />
-                  </div>
-                  <p className="text-lg font-medium text-white">
-                    You're presenting to everyone
-                  </p>
-                  <button
-                    onClick={() => void toggleScreenShare()}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium shadow"
-                  >
-                    <ScreenShareOff size={16} />
-                    Stop presenting
-                  </button>
-                </div>
-              ) : (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-contain bg-black"
-                />
-              )}
-              {!iAmSharing && (
-                <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-black/60 backdrop-blur text-white border border-white/15">
-                  <span className="relative inline-flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-                  </span>
-                  {sharerName} is presenting
-                </div>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted={iAmSharing}
+                className="w-full h-full object-contain bg-black"
+              />
+              <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-black/60 backdrop-blur text-white border border-white/15">
+                <span className="relative inline-flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                </span>
+                {iAmSharing ? "You're presenting" : `${sharerName} is presenting`}
+              </div>
+              {iAmSharing && (
+                <button
+                  onClick={() => void toggleScreenShare()}
+                  className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium shadow"
+                >
+                  <ScreenShareOff size={12} />
+                  Stop presenting
+                </button>
               )}
             </div>
 
