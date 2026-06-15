@@ -65,7 +65,8 @@ class ErrorBoundary extends React.Component<
 
 const ConnectionBanner = () => {
   const { isAuthenticated } = useApp();
-  const { isConnected, isReconnecting, hasAttempted } = useSocket();
+  const { isConnected, isReconnecting, hasAttempted, lastErrorKind } =
+    useSocket();
   const [graceElapsed, setGraceElapsed] = useState(false);
   const [isBrowserOnline, setIsBrowserOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine
@@ -96,6 +97,9 @@ const ConnectionBanner = () => {
   let message: string;
   if (!isBrowserOnline) {
     message = "You appear offline. Messages and updates may not sync.";
+  } else if (lastErrorKind === "auth") {
+    message =
+      "Your session needs to refresh. Reconnecting securely…";
   } else if (isReconnecting) {
     message = "Reconnecting to Nebula… real-time features are paused.";
   } else {

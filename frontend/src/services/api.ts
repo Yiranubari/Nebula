@@ -57,7 +57,7 @@ api.interceptors.response.use(
   }
 );
 
-const sharedRefresh = (): Promise<string | null> => {
+export const sharedRefresh = (): Promise<string | null> => {
   if (!refreshInFlight) {
     refreshInFlight = doRefresh().finally(() => {
       refreshInFlight = null;
