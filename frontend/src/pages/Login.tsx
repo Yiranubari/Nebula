@@ -12,7 +12,7 @@ import {
 } from "../services/uiLoading";
 
 const Login = () => {
-  const { login: doLogin, users, verifyOtp: doVerify } = useApp();
+  const { login: doLogin, verifyOtp: doVerify } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState(location.state?.email || "");
@@ -32,9 +32,6 @@ const Login = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-
-  const onGoogleSignIn = () => {
-  };
 
   const isValidEmail = (s: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
@@ -264,48 +261,6 @@ const Login = () => {
               )}
             </button>
 
-            <div className="relative py-1">
-              <div className="h-px bg-white/[0.06]" />
-              <span className="absolute left-1/2 -translate-x-1/2 -top-2 bg-slate-900 px-3 text-[10px] uppercase tracking-[0.2em] text-slate-500 font-medium">
-                or
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={onGoogleSignIn}
-              className="w-full px-4 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-100 rounded-full font-medium inline-flex items-center justify-center gap-3 transition-colors"
-              aria-label="Sign in with Google"
-            >
-              <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 48 48"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <path
-                    fill="#EA4335"
-                    d="M24 9.5c3.54 0 6.7 1.22 9.2 3.6l6.9-6.9C36.1 2.4 30.5 0 24 0 14.6 0 6.4 5.4 2.4 13.2l8 6.2C12.3 13 17.7 9.5 24 9.5z"
-                  />
-                  <path
-                    fill="#4285F4"
-                    d="M46.1 24.5c0-1.6-.1-2.8-.4-4.1H24v7.8h12.5c-.3 2-1.6 5-4.5 7l7 5.4c4.1-3.8 6.1-9.4 6.1-16.1z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M10.4 28.8c-.5-1.6-.8-3.3-.8-5s.3-3.4.8-5L2.4 12.6C.9 15.6 0 19 0 22.8c0 3.8.9 7.2 2.4 10.2l8-4.2z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M24 48c6.5 0 12-2.1 16-5.8l-7-5.4c-1.9 1.3-4.4 2.2-9 2.2-6.3 0-11.7-3.5-13.6-8.5l-8 6.2C6.4 42.6 14.6 48 24 48z"
-                  />
-                </svg>
-              </span>
-              Sign in with Google
-            </button>
-
             <button
               type="button"
               onClick={() => {
@@ -500,24 +455,6 @@ const Login = () => {
           </p>
         )}
 
-        {mode === "login" && (
-          <div className="mt-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-              Demo emails
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {users.slice(0, 4).map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => setEmail(u.email)}
-                  className="px-2.5 py-1 text-xs bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-full text-slate-300 transition-colors"
-                >
-                  {u.email}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
