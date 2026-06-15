@@ -201,7 +201,7 @@ export function resendOtpEmail(otp: string): EmailContent {
     preview: `New Nebula verification code: ${otp}.`,
     title: "A fresh code",
     intro:
-      "Use this new verification code — the previous one is no longer valid.",
+      "Use this new verification code. The previous one is no longer valid.",
     bodyHtml: otpCodeBlock(otp),
     footerNote:
       "Didn't request this? No action is needed.",
@@ -257,7 +257,7 @@ export function passwordResetEmail(otp: string): EmailContent {
       "Enter this code in the app to set a new password for your Nebula account.",
     bodyHtml: otpCodeBlock(otp),
     footerNote:
-      "Didn't request this? Your password stays the same — you can ignore this email.",
+      "Didn't request this? Your password stays the same, so you can ignore this email.",
   });
 
   return { subject, text, html };

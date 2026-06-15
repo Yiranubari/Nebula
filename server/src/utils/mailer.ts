@@ -106,7 +106,7 @@ export async function sendMail(
   if (!useResend && !useSmtp) {
     logger.warn(
       { to, subject },
-      "No email provider configured (RESEND_API_KEY or SMTP_USER/SMTP_PASS) — skipping send"
+      "No email provider configured (RESEND_API_KEY or SMTP_USER/SMTP_PASS), skipping send"
     );
     return;
   }

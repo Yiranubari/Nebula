@@ -134,7 +134,7 @@ const TaskBoard = () => {
               Task Board
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Drag, filter, and ship — your team's work at a glance.
+              Drag, filter, and ship. Your team's work at a glance.
             </p>
           </div>
           <div className="flex-1 md:flex md:items-center md:justify-end">

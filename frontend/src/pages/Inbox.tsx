@@ -278,7 +278,7 @@ const Inbox: React.FC = () => {
           });
         }
       } catch {
-        toast.error("File upload failed — message not sent.");
+        toast.error("File upload failed. Message not sent.");
         return;
       }
       sendDirectMessage(selectedUser.id, trimmed, atts);

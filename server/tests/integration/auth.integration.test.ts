@@ -6,7 +6,7 @@ import type { Express } from "express";
 
 const SKIP = !process.env.TEST_DATABASE_URL;
 
-describe.skipIf(SKIP)("Auth Routes — Integration", () => {
+describe.skipIf(SKIP)("Auth Routes (Integration)", () => {
   let app: Express;
   let prisma: any;
 

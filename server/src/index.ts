@@ -16,7 +16,7 @@ async function main() {
     await prisma.$connect();
     logger.info("Database connected");
   } catch (err) {
-    logger.warn({ err }, "Database connection failed — server starting without DB");
+    logger.warn({ err }, "Database connection failed. Server starting without DB");
   }
 
   server.listen(env.PORT, () => {

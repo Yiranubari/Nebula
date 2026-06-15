@@ -25,7 +25,7 @@
               secondary: "#a855f7", // Purple 500 (accent)
               accent: "#ec4899", // Pink 500
               dark: "#0b1120", // a touch deeper than slate-900 to match landing
-              surface: "#0f172a", // slate-900 — used as card surface in dark
+              surface: "#0f172a", // slate-900, used as card surface in dark
               "surface-2": "#111a2f", // elevated panel
             },
             backgroundImage: {
@@ -82,7 +82,7 @@
         color: transparent;
       }
 
-      /* Glass panel surfaces — borderless, elevated by soft layered shadows.
+      /* Glass panel surfaces, borderless, elevated by soft layered shadows.
          box-shadow uses !important because the Tailwind CDN injects utilities
          (e.g. `shadow-sm`) after this stylesheet, so a plain declaration would
          lose the cascade race when markup combines `glass-panel shadow-sm`. */
@@ -114,7 +114,7 @@
           0 1px 0 rgba(255, 255, 255, 0.07) inset,
           0 24px 56px -16px rgba(0, 0, 0, 0.8) !important;
       }
-      /* Borderless soft surface — for cards that should feel like the landing page */
+      /* Borderless soft surface, for cards that should feel like the landing page */
       .soft-surface {
         background-color: rgba(255, 255, 255, 0.82);
         backdrop-filter: blur(12px);
@@ -144,7 +144,7 @@
           0 22px 48px -12px rgba(0, 0, 0, 0.8) !important;
       }
 
-      /* Atmospheric background — subtle gradient orbs & grid */
+      /* Atmospheric background, subtle gradient orbs and grid */
       .app-atmosphere {
         position: fixed;
         inset: 0;
@@ -226,7 +226,7 @@
           );
       }
 
-      /* Native <select> option list — force readable colors per theme.
+      /* Native <select> option list, force readable colors per theme.
          Browsers render the option popup using OS-level styling by default,
          which gives white-on-white in dark mode on most platforms. */
       html:not(.dark) select option {

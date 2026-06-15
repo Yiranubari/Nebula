@@ -424,7 +424,7 @@ const Chat = () => {
           });
         }
       } catch {
-        toast.error("File upload failed — reply not sent.");
+        toast.error("File upload failed. Reply not sent.");
         return;
       }
       sendReply(replyToId, inputText, activeTrackId, atts);
@@ -455,7 +455,7 @@ const Chat = () => {
       setInputText("");
       setPendingFiles([]);
     } catch {
-      toast.error("File upload failed — message not sent.");
+      toast.error("File upload failed. Message not sent.");
     } finally {
       setIsUploading(false);
     }

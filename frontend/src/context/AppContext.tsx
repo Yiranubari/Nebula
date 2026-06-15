@@ -321,7 +321,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ...(workspaceName ? { workspaceName } : {}),
       });
       toast.success(
-        res.data.message || "Workspace created — please verify your email."
+        res.data.message || "Workspace created. Please verify your email."
       );
       return true;
     } catch {
@@ -603,7 +603,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     setDirectMessages((prev) => [...prev, optimistic]);
     if (!socket?.connected) {
-      toast.error("You're offline. Message queued as failed — retry when reconnected.");
+      toast.error("You're offline. Message queued as failed. Retry when reconnected.");
       return tempId;
     }
     socket.emit("dm:send", {
