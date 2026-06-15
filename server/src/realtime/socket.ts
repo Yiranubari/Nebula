@@ -56,7 +56,12 @@ export const initSocket = (httpServer: http.Server) => {
       socket.data.workspaceId = user.workspaceId;
       next();
     } catch (err) {
-      logger.error({ err }, "Socket authentication failed");
+      const name = (err as { name?: string })?.name;
+      if (name === "TokenExpiredError" || name === "JsonWebTokenError") {
+        logger.debug({ name }, "Socket auth rejected (expired or invalid token)");
+      } else {
+        logger.error({ err }, "Socket authentication failed");
+      }
       next(new Error("Authentication error"));
     }
   });

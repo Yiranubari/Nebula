@@ -40,6 +40,37 @@ const readStoredToken = (): string =>
       localStorage.getItem("nebula.token.v1"))) ||
   "";
 
+const decodeJwtExp = (token: string): number | null => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const padded = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = JSON.parse(atob(padded));
+    return typeof json.exp === "number" ? json.exp : null;
+  } catch {
+    return null;
+  }
+};
+
+const isTokenStaleOrAbsent = (token: string, withinSeconds = 30): boolean => {
+  if (!token) return true;
+  const exp = decodeJwtExp(token);
+  if (exp === null) return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  return exp - nowSec < withinSeconds;
+};
+
+const getFreshToken = async (): Promise<string> => {
+  const cached = readStoredToken();
+  if (!isTokenStaleOrAbsent(cached)) return cached;
+  try {
+    const refreshed = await sharedRefresh();
+    if (refreshed) return refreshed;
+  } catch {
+  }
+  return readStoredToken();
+};
+
 const classifyError = (msg: string | undefined): SocketErrorKind => {
   if (!msg) return "unknown";
   const m = msg.toLowerCase();
@@ -102,7 +133,9 @@ export const SocketProvider = ({
     setLastErrorMessage(null);
 
     const s = io(SOCKET_URL, {
-      auth: (cb) => cb({ token: readStoredToken() }),
+      auth: (cb) => {
+        void getFreshToken().then((token) => cb({ token }));
+      },
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
