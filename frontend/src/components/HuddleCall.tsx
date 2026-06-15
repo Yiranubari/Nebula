@@ -190,28 +190,44 @@ export default function HuddleCall({
         {presenting ? (
           <div className="h-full flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1 rounded-2xl overflow-hidden bg-black border border-white/5">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted={iAmSharing}
-                className="w-full h-full object-contain bg-black"
-              />
-              <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-black/60 backdrop-blur text-white border border-white/15">
-                <span className="relative inline-flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-                </span>
-                {iAmSharing ? "You're presenting" : `${sharerName} is presenting`}
-              </div>
-              {iAmSharing && (
-                <button
-                  onClick={() => void toggleScreenShare()}
-                  className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium shadow"
-                >
-                  <ScreenShareOff size={12} />
-                  Stop presenting
-                </button>
+              {iAmSharing ? (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-900 to-slate-950 px-6 text-center">
+                  <div className="w-16 h-16 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center">
+                    <ScreenShare size={28} className="text-indigo-300" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold text-white">
+                      You're presenting your screen
+                    </p>
+                    <p className="text-sm text-slate-400 max-w-sm">
+                      Everyone else in the call can see it. We hide the
+                      preview on your end to avoid the mirror effect.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => void toggleScreenShare()}
+                    className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium shadow"
+                  >
+                    <ScreenShareOff size={14} />
+                    Stop presenting
+                  </button>
+                </div>
+              ) : (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain bg-black"
+                />
+              )}
+              {!iAmSharing && (
+                <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-black/60 backdrop-blur text-white border border-white/15">
+                  <span className="relative inline-flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                  </span>
+                  {sharerName} is presenting
+                </div>
               )}
             </div>
 
