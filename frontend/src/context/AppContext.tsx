@@ -435,9 +435,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
     const isAdmin = currentUser.role === "ADMIN";
     const finalStatus = (!isAdmin && status === TaskStatus.DONE) ? TaskStatus.REVIEW : status;
-    const updated = await tasksService.update(taskId, { status: finalStatus as any });
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? updated as unknown as Task : t)));
-    toast.success(`Moved to ${String(finalStatus).toLowerCase().replace("_", " ")}`);
+    const snapshot = tasks;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? ({ ...t, status: finalStatus } as Task) : t
+      )
+    );
+    try {
+      const updated = await tasksService.update(taskId, { status: finalStatus as any });
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? (updated as unknown as Task) : t)));
+      toast.success(`Moved to ${String(finalStatus).toLowerCase().replace("_", " ")}`);
+    } catch (err) {
+      setTasks(snapshot);
+      toast.error("Couldn't move task. Try again.");
+      throw err;
+    }
   };
 
   const deleteTask = async (taskId: string) => {

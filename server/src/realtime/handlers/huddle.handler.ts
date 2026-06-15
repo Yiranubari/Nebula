@@ -61,6 +61,8 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
   const leaveHuddle = (roomId: string) => {
     const key = roomKey(roomId);
     const wasInRoom = huddleRooms.get(key)?.has(userId) ?? false;
+    if (!wasInRoom) return;
+
     huddleRooms.get(key)?.delete(userId);
     if (huddleRooms.get(key)?.size === 0) huddleRooms.delete(key);
 
@@ -73,14 +75,12 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
       participants,
     });
 
-    if (wasInRoom) {
-      setInHuddle(getIO(), userId, workspaceId, null);
-    }
+    setInHuddle(getIO(), userId, workspaceId, null);
+    logger.info(`${userId} left huddle ${roomId}`);
   };
 
   socket.on("huddle:leave", ({ roomId }) => {
     leaveHuddle(roomId);
-    logger.info(`${userId} left huddle ${roomId}`);
   });
 
   socket.on("huddle:offer", ({ roomId, toUserId, sdp }) => {
