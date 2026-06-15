@@ -64,27 +64,20 @@ const Chat = () => {
   const [newTrackName, setNewTrackName] = useState("");
   const [creating, setCreating] = useState(false);
   const isAdmin = currentUser.role === "ADMIN";
-  /**
-   * Admins can send, react, pin, and record in any track even when they
-   * aren't explicitly on the member list. Members must be on the roster.
-   */
   const activeTrackMembers =
     tracks.find((t) => t.id === activeTrackId)?.members ?? [];
   const isTrackMember = activeTrackMembers.includes(currentUser.id);
   const canPost = isAdmin || isTrackMember;
   const [huddleOpen, setHuddleOpen] = useState(false);
-  // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const [recSeconds, setRecSeconds] = useState(0);
   const recTimerRef = useRef<number | null>(null);
-  // File upload state
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  // Audio playback UI state (WhatsApp-style)
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState<Record<string, number>>(
     {},
@@ -98,7 +91,6 @@ const Chat = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  // @mention autocomplete state
   const inputRef = useRef<HTMLInputElement | null>(null);
   const mentionStartRef = useRef<number | null>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
@@ -109,12 +101,11 @@ const Chat = () => {
     label: string;
     sublabel?: string;
     avatar?: string;
-    handle: string; // what to insert after @
+    handle: string;
   };
   const [mentionItems, setMentionItems] = useState<MentionItem[]>([]);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [replyToId, setReplyToId] = useState<string | null>(null);
-  // WhatsApp-style quick reactions
   const reactionQuick = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
   const [reactionPopoverId, setReactionPopoverId] = useState<string | null>(
     null,
@@ -203,7 +194,6 @@ const Chat = () => {
     scrollToBottom();
   }, [messages, activeTrackId]);
 
-  // Read deep link params (?trackId=&messageId=)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tid = params.get("trackId");
@@ -212,7 +202,6 @@ const Chat = () => {
     if (mid) setHighlightId(mid);
   }, [location.search]);
 
-  // When highlightId is set and message exists, scroll and highlight briefly
   useEffect(() => {
     if (!highlightId) return;
     const el = document.getElementById(`msg-${highlightId}`);
@@ -222,7 +211,6 @@ const Chat = () => {
       const t = window.setTimeout(() => {
         el.classList.remove("ring-2", "ring-indigo-400");
         setHighlightId(null);
-        // Clear the query params after focusing
         navigate({ pathname: "/chat" }, { replace: true });
       }, 2000);
       return () => window.clearTimeout(t);
@@ -240,7 +228,6 @@ const Chat = () => {
       }
       mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
       mediaStreamRef.current = null;
-      // Revoke any cached object URLs
       Object.values(playbackUrlsRef.current).forEach((u) => {
         try {
           URL.revokeObjectURL(u as string);
@@ -279,7 +266,6 @@ const Chat = () => {
     const ss = Math.floor(s % 60);
     return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
   };
-  // Render message content with styled @mentions linking to profile
   const renderMessageText = (text: string) => {
     const elements: React.ReactNode[] = [];
     const regex = /@[A-Za-z0-9_\-]+/g;
@@ -293,7 +279,6 @@ const Chat = () => {
       }
       const raw = m[0];
       const handle = raw.slice(1).toLowerCase();
-      // Resolve handle to a user by first name or nospace full name
       const matchedUser = users.find((u) => {
         const first = (u.name.split(/\s+/)[0] || "").toLowerCase();
         const nospace = u.name.toLowerCase().replace(/\s+/g, "");
@@ -312,7 +297,6 @@ const Chat = () => {
           </Link>,
         );
       } else {
-        // Resolve to track by name
         const matchedTrack = tracks.find(
           (t) => t.name.toLowerCase() === handle,
         );
@@ -477,7 +461,6 @@ const Chat = () => {
     }
   };
 
-  // Format time helper
   const formatTime = (isoString: string) => {
     return new Date(isoString).toLocaleTimeString([], {
       hour: "2-digit",
@@ -503,18 +486,13 @@ const Chat = () => {
   }, [messages, tracks, activeTrackId, currentUser.id]);
 
   useEffect(() => {
-    // UI-only read receipts: mark the active track as read for the current user.
     markTrackRead(activeTrackId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTrackId, currentUser.id]);
 
   useEffect(() => {
-    // Also mark as read when new messages arrive in the active track.
     markTrackRead(activeTrackId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, activeTrackId]);
 
-  // Build and update @mention suggestions
   const buildMentionItems = (query: string): MentionItem[] => {
     const q = (query || "").toLowerCase();
     const userItems: MentionItem[] = users
@@ -562,7 +540,7 @@ const Chat = () => {
     const upto = val.slice(0, pos);
     const m = upto.match(/@([A-Za-z0-9_\-]*)$/);
     if (m) {
-      mentionStartRef.current = pos - m[1].length - 1; // position of '@'
+      mentionStartRef.current = pos - m[1].length - 1;
       const q = m[1] || "";
       const items = buildMentionItems(q);
       setMentionQuery(q);
@@ -594,7 +572,6 @@ const Chat = () => {
     setMentionQuery("");
     setMentionIndex(0);
     mentionStartRef.current = null;
-    // Restore caret after inserted text
     const nextPos = before.length + insert.length;
     setTimeout(() => {
       try {
@@ -635,7 +612,6 @@ const Chat = () => {
               try {
                 await renameTrack(activeTrackId, renameValue.trim());
               } catch {
-                // context rolls back + toast shown via interceptor
               } finally {
                 setRenaming(false);
               }
@@ -674,7 +650,6 @@ const Chat = () => {
                   tracks.find((t) => t.id !== toDelete)?.id || "track-general";
                 setActiveTrackId(next);
               } catch {
-                // context rolls back + toast shown via interceptor
               } finally {
                 setConfirmDelete(false);
               }
@@ -1015,7 +990,6 @@ const Chat = () => {
         />
       )}
 
-      {/* Pinned Messages */}
       {hasPinnedForTrack && (
         <div className="fixed top-[7.5rem] md:top-16 left-0 right-0 md:left-64 z-30 px-4 md:px-6 bg-white dark:bg-surface h-14 flex items-center shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <div
@@ -1086,10 +1060,8 @@ const Chat = () => {
         </div>
       )}
 
-      {/* Spacer so messages never scroll behind fixed pinned bar */}
       {hasPinnedForTrack && <div className="shrink-0 h-14" />}
 
-      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-dark">
         {messages
           .filter(
@@ -1479,7 +1451,6 @@ const Chat = () => {
                             </button>
                           );
                         })}
-                      {/* Removed "React" and "More" text buttons per request */}
                       <button
                         className={`
  isMe
@@ -1612,7 +1583,6 @@ const Chat = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="p-3 md:p-4 bg-white dark:bg-surface shrink-0 shadow-[0_-1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_-1px_0_rgba(255,255,255,0.03)]">
         {pendingFiles.length > 0 && (
           <div className="max-w-4xl mx-auto pb-2">

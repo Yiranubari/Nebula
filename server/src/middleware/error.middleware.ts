@@ -4,12 +4,6 @@ import { AppError } from "../utils/AppError";
 import { logger } from "../config/logger";
 import { env } from "../config/env";
 
-/**
- * Summarise Zod errors into a single human-readable message the frontend
- * shows in toasts (it reads `error.response.data.message`). In non-production
- * we also attach a per-field map to aid debugging; in production we omit it
- * so schema shape isn't leaked over the wire.
- */
 function formatZod(err: ZodError) {
   const first = err.issues[0];
   const path = first?.path?.length ? first.path.join(".") : "";

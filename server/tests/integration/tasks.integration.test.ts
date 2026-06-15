@@ -1,7 +1,3 @@
-/**
- * Integration tests for the Tasks API.
- * Skips if TEST_DATABASE_URL is not set.
- */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
@@ -20,13 +16,11 @@ describe.skipIf(SKIP)("Tasks Routes — Integration", () => {
     const { prisma: db } = await import("../../src/db/prisma");
     prisma = db;
 
-    // Create + verify a user so we have a working auth token
     const email = `tasks+${Date.now()}@nebula.test`;
     const password = "TasksTest123!";
 
     await request(app).post("/api/auth/register").send({ name: "Tasks Tester", email, password });
 
-    // Grab the OTP directly from the DB
     const user = await prisma.user.findUnique({ where: { email } });
     const otp = user?.otp ?? "";
 

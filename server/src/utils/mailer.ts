@@ -4,12 +4,6 @@ import nodemailer from "nodemailer";
 import { env } from "../config/env";
 import { logger } from "../config/logger";
 
-/**
- * Logo PNG embedded in every outgoing email via Content-ID so the mark
- * renders in every mainstream client (Gmail, Apple Mail, Outlook, …).
- * The PNG is generated from `frontend/public/logo.svg` by `rsvg-convert`;
- * see `server/src/assets/logo.png`.
- */
 export const LOGO_CID = "nebula-logo";
 const logoPath = path.resolve(__dirname, "..", "assets", "logo.png");
 let logoBuffer: Buffer | null = null;
@@ -18,8 +12,6 @@ try {
 } catch (err) {
   logger.warn({ err, logoPath }, "Could not load email logo asset");
 }
-
-// ─── Transports ─────────────────────────────────────────────────────────────
 
 const smtpTransporter = nodemailer.createTransport({
   host: env.SMTP_HOST,
@@ -34,15 +26,6 @@ function fromAddress(): string {
   return env.EMAIL_FROM || env.SMTP_FROM || "Nebula <noreply@nebula.com>";
 }
 
-// ─── Resend (HTTP API) ──────────────────────────────────────────────────────
-
-/**
- * Send via Resend's HTTP API. Used in production on hosts that block
- * outbound SMTP (Render, Vercel, etc.). Resend's free tier (3k/month, no
- * card) is plenty for auth flows.
- *
- * Docs: https://resend.com/docs/api-reference/emails/send-email
- */
 async function sendViaResend(
   to: string,
   subject: string,
@@ -86,8 +69,6 @@ async function sendViaResend(
   }
 }
 
-// ─── SMTP (local dev fallback) ──────────────────────────────────────────────
-
 async function sendViaSmtp(
   to: string,
   subject: string,
@@ -112,8 +93,6 @@ async function sendViaSmtp(
       : undefined,
   });
 }
-
-// ─── Public API ─────────────────────────────────────────────────────────────
 
 export async function sendMail(
   to: string,

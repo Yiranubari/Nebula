@@ -13,7 +13,6 @@ export class DmService extends BaseService {
       throw new AppError(400, "You cannot send a direct message to yourself");
     }
 
-    // Both users must live in the same workspace — DMs never cross tenants.
     const targetUser = await this.prisma.user.findUnique({
       where: { id: toUserId },
       select: { id: true, workspaceId: true },

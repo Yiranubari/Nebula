@@ -11,18 +11,11 @@ interface SelectProps<T extends string = string> {
   onChange: (value: T) => void;
   options: SelectOption<T>[];
   placeholder?: string;
-  /** Extra classes applied to the trigger button. */
   className?: string;
-  /** Optional icon rendered inside the trigger before the label. */
   leadingIcon?: React.ReactNode;
   ariaLabel?: string;
 }
 
-/**
- * Lightweight, framework-free dropdown styled to match the Nebula aesthetic.
- * Replaces native <select> when the default browser popup looks out of place.
- * Keyboard: ArrowUp/Down navigate, Enter selects, Esc closes.
- */
 function Select<T extends string = string>({
   value,
   onChange,
@@ -63,7 +56,6 @@ function Select<T extends string = string>({
 
   useEffect(() => {
     if (!open) return;
-    // Keep highlighted item in view
     const el = listRef.current?.querySelector<HTMLLIElement>(
       `[data-index="${activeIndex}"]`
     );
@@ -139,7 +131,6 @@ function Select<T extends string = string>({
             ref={listRef}
             className="py-1.5 max-h-72 overflow-y-auto"
             onMouseLeave={() => {
-              /* preserve last highlight */
             }}
           >
             {options.map((opt, idx) => {

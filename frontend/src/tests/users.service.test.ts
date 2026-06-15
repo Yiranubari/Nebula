@@ -1,6 +1,3 @@
-/**
- * Unit tests for usersService — all axios calls are mocked.
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/services/api", () => ({

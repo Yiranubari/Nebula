@@ -4,8 +4,6 @@ import { env } from "../config/env";
 export interface JwtPayload {
   userId: string;
   role: string;
-  /** Tenant — the workspace this token is scoped to. Nullable only during
-   * the signup/verify step before the user joins their first workspace. */
   workspaceId: string | null;
 }
 

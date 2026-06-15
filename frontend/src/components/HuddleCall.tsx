@@ -53,7 +53,6 @@ export default function HuddleCall({
     remoteCameraStreams,
   } = useCall();
 
-  // ─── Lifecycle ─────────────────────────────────────────────────────────────
   useEffect(() => {
     void joinHuddle(trackId);
     return () => {
@@ -61,7 +60,6 @@ export default function HuddleCall({
         leaveHuddle();
       } catch {}
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trackId]);
 
   const handleClose = () => {
@@ -71,7 +69,6 @@ export default function HuddleCall({
     onClose();
   };
 
-  // ─── Call duration timer (e.g. "01:23") ────────────────────────────────────
   const startedAt = useRef<number>(Date.now());
   const [elapsed, setElapsed] = useState("00:00");
   useEffect(() => {
@@ -86,7 +83,6 @@ export default function HuddleCall({
     return () => window.clearInterval(id);
   }, []);
 
-  // ─── Derived state ─────────────────────────────────────────────────────────
   const activeScreenStream: MediaStream | null = useMemo(() => {
     if (!activeScreenSharerId) return null;
     if (activeScreenSharerId === currentUser.id) return localScreenStream;
@@ -114,7 +110,6 @@ export default function HuddleCall({
     [participants]
   );
 
-  // ─── Settings popover ──────────────────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -128,17 +123,14 @@ export default function HuddleCall({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [settingsOpen]);
 
-  // ─── ESC closes the call ───────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Adaptive grid columns based on participant count ─────────────────────
   const gridCols = useMemo(() => {
     const n = participants.length;
     if (n <= 1) return "grid-cols-1";
@@ -150,7 +142,6 @@ export default function HuddleCall({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0e1a] text-slate-100">
-      {/* ─── Top bar ────────────────────────────────────────────────────── */}
       <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/5">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-500/30 text-white font-bold text-sm">
@@ -195,7 +186,6 @@ export default function HuddleCall({
         )}
       </header>
 
-      {/* ─── Stage ──────────────────────────────────────────────────────── */}
       <main className="flex-1 min-h-0 overflow-hidden px-3 md:px-6 py-4">
         {presenting ? (
           <div className="h-full flex flex-col lg:flex-row gap-3">
@@ -225,7 +215,6 @@ export default function HuddleCall({
               )}
             </div>
 
-            {/* Filmstrip — right side on desktop, bottom on mobile */}
             <div className="flex lg:flex-col gap-2 overflow-auto lg:w-48 shrink-0">
               {participants.map((p) => (
                 <ParticipantTile
@@ -270,9 +259,7 @@ export default function HuddleCall({
         )}
       </main>
 
-      {/* ─── Bottom control bar ─────────────────────────────────────────── */}
       <footer className="relative flex items-center justify-center px-3 md:px-6 pt-2 pb-4">
-        {/* Settings popover */}
         {settingsOpen && (
           <div
             ref={settingsRef}
@@ -367,8 +354,6 @@ export default function HuddleCall({
   );
 }
 
-// ─── Participant tile ──────────────────────────────────────────────────────
-
 type TileParticipant = {
   id: string;
   name: string;
@@ -407,7 +392,6 @@ const ParticipantTile: React.FC<{
           : "border-emerald-500/30"
       } ${compact ? "h-28 lg:h-28" : "min-h-[12rem]"}`}
     >
-      {/* Camera video fills the tile when present; otherwise the avatar shows. */}
       {hasVideo ? (
         <video
           ref={videoRef}
@@ -440,7 +424,6 @@ const ParticipantTile: React.FC<{
         </>
       )}
 
-      {/* Raised-hand badge */}
       {p.handRaised && (
         <span
           className={`absolute ${
@@ -451,7 +434,6 @@ const ParticipantTile: React.FC<{
         </span>
       )}
 
-      {/* Name + mic chip (bottom-left) */}
       <div
         className={`absolute ${
           compact ? "bottom-1.5 left-1.5" : "bottom-3 left-3"
@@ -467,7 +449,6 @@ const ParticipantTile: React.FC<{
         </span>
       </div>
 
-      {/* Sharer chip (top-left) */}
       {isSharer && (
         <div
           className={`absolute ${
@@ -481,8 +462,6 @@ const ParticipantTile: React.FC<{
     </div>
   );
 };
-
-// ─── Control-bar icon button ───────────────────────────────────────────────
 
 function IconButton({
   active,
@@ -519,8 +498,6 @@ function IconButton({
     </button>
   );
 }
-
-// ─── Device select (used inside settings popover) ─────────────────────────
 
 function DeviceSelect({
   icon,

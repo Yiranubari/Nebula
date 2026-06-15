@@ -41,7 +41,6 @@ class ErrorBoundary extends React.Component<
     return { error };
   }
   componentDidCatch(error: Error, info: any) {
-    // eslint-disable-next-line no-console
     console.error("App runtime error:", error, info);
   }
   render() {
@@ -67,8 +66,6 @@ class ErrorBoundary extends React.Component<
 const ConnectionBanner = () => {
   const { isAuthenticated } = useApp();
   const { isConnected, isReconnecting, hasAttempted } = useSocket();
-  // Grace period on first page load: give the socket ~3s to establish before
-  // warning the user. Suppresses the banner from flashing during handshake.
   const [graceElapsed, setGraceElapsed] = useState(false);
   useEffect(() => {
     if (!hasAttempted) return;
@@ -78,9 +75,7 @@ const ConnectionBanner = () => {
   }, [hasAttempted]);
 
   if (!isAuthenticated || isConnected) return null;
-  // Don't show anything until we've tried at least once.
   if (!hasAttempted) return null;
-  // Reconnect attempts always show the reconnecting variant immediately.
   if (!isReconnecting && !graceElapsed) return null;
 
   return (
@@ -106,7 +101,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     location.pathname
   );
 
-  // Handle Escape to close, focus trapping, and body scroll lock for mobile menu
   useEffect(() => {
     if (!mobileOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -135,7 +129,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     const restore = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", onKey);
-    // Focus dialog container next tick
     setTimeout(() => dialogRef.current?.focus(), 0);
     return () => {
       document.removeEventListener("keydown", onKey);
@@ -146,7 +139,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="relative flex min-h-screen font-sans text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-dark">
-      {/* Atmospheric background — gradient orbs + subtle grid */}
       {!isPublicRoute && (
         <>
           <div className="app-atmosphere" aria-hidden="true" />
@@ -154,14 +146,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </>
       )}
 
-      {/* Desktop sidebar */}
       {isAuthenticated && !isPublicRoute && (
         <div className="hidden md:block relative z-10">
           <Sidebar variant="desktop" />
         </div>
       )}
 
-      {/* Mobile top bar */}
       {isAuthenticated && !isPublicRoute ? (
         <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 dark:bg-dark/60 backdrop-blur-xl shadow-[0_4px_18px_-8px_rgba(15,23,42,0.12)] dark:shadow-[0_4px_24px_-10px_rgba(0,0,0,0.5)] z-40 flex items-center px-4">
           <button
@@ -199,7 +189,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       ) : null}
 
-      {/* Mobile sidebar overlay */}
       {isAuthenticated && !isPublicRoute && mobileOpen && (
         <>
           <div
@@ -232,9 +221,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  // Warm up the backend the moment the SPA loads so a cold-started Render
-  // instance is already booting by the time the user clicks "Sign in".
-  // No-op on localhost / fast hosts; cheap health ping otherwise.
   useEffect(() => {
     void warmupBackend();
   }, []);
@@ -249,19 +235,10 @@ function App() {
     return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing />;
   };
 
-  /**
-   * SocketConnector — lives inside AppProvider + SocketProvider so it can read
-   * auth state and the access token from localStorage, then call socket.connect().
-   * On logout / unauthenticated, it tears the socket down.
-   */
   const SocketConnector = ({ children }: { children: React.ReactNode }) => {
     const { isAuthenticated } = useApp();
     const { connect, disconnect } = useSocket();
 
-    // Page-reload reconnect: if we come back to a page already authed
-    // (e.g., after a refresh), hook the socket up to the stored token.
-    // `connect()` is idempotent — it no-ops if the current socket already
-    // uses this token.
     useEffect(() => {
       if (isAuthenticated) {
         const token =
@@ -272,7 +249,6 @@ function App() {
       } else {
         disconnect();
       }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated]);
 
     return <>{children}</>;

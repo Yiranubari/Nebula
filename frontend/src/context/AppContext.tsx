@@ -1,11 +1,3 @@
-/**
- * AppContext — application-wide state driven entirely by the REST API + Socket.IO.
- * All mock data and localStorage-based persistence has been removed.
- *
- * State is loaded from the server on mount and kept in sync via:
- *   • REST API calls for mutations
- *   • Socket.IO events for real-time updates from other clients
- */
 
 import React, {
   createContext,
@@ -40,8 +32,6 @@ import { useSocket } from "./SocketContext";
 
 const ACCESS_TOKEN_KEY = "nebula.accessToken";
 
-// ─── Context interface ────────────────────────────────────────────────────────
-
 interface AppContextType {
   currentUser: User;
   users: User[];
@@ -56,7 +46,6 @@ interface AppContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
 
-  // Auth
   login: (email: string, password?: string) => Promise<boolean>;
   signup: (
     name: string,
@@ -68,16 +57,14 @@ interface AppContextType {
   verifyOtp: (email: string, otp: string) => Promise<boolean>;
   logout: () => Promise<void>;
 
-  // Users
   updateCurrentUser: (updates: Partial<Pick<User, "name" | "email" | "avatar">>) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
   updateUserRole: (userId: string, role: "ADMIN" | "MEMBER") => Promise<void>;
   inviteMember: (email: string) => Promise<User>;
   completeInvite: (payload: { email: string; name: string; password: string; otp: string }) => Promise<boolean>;
-  addUser: (user: User) => void;           // admin-only local add after API call
-  switchUser: (userId: string) => void;    // dev helper — remove in prod
+  addUser: (user: User) => void;
+  switchUser: (userId: string) => void;
 
-  // Tasks
   addTask: (task: Omit<Task, "id" | "createdAt">) => Promise<void>;
   updateTask: (task: Task) => Promise<void>;
   updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<void>;
@@ -87,14 +74,12 @@ interface AppContextType {
   rejectTask: (taskId: string) => Promise<void>;
   addTaskReminder: (taskId: string, forUserId?: string) => void;
 
-  // Tracks
   addTrack: (name: string) => Promise<Track | null>;
   addMemberToTrack: (trackId: string, userId: string) => Promise<void>;
   removeMemberFromTrack: (trackId: string, userId: string) => Promise<void>;
   renameTrack: (trackId: string, name: string) => Promise<void>;
   deleteTrack: (trackId: string) => Promise<void>;
 
-  // Messages (track)
   sendMessage: (content: string, trackId?: string, attachments?: Attachment[]) => void;
   sendReply: (parentId: string, content: string, trackId?: string, attachments?: Attachment[]) => void;
   pinMessage: (messageId: string, pinned: boolean) => void;
@@ -102,37 +87,26 @@ interface AppContextType {
   toggleReaction: (messageId: string, emoji: string, userId: string) => void;
   markTrackRead: (trackId: string) => void;
 
-  // Direct messages
   sendDirectMessage: (toUserId: string, content: string, attachments?: Attachment[]) => string;
   markDmThreadRead: (withUserId: string) => void;
   setDirectMessageStatus: (id: string, status: "sent" | "failed") => void;
   toggleDirectMessageReaction: (dmId: string, emoji: string, userId: string) => void;
 
-  // Notifications
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsReadForUser: (userId: string) => Promise<void>;
 
-  // Presence / typing (socket-driven, kept for API compat)
   setUserPresence: (userId: string, status: PresenceStatus, extra?: Partial<{ inHuddleTrackId: string | null }>) => void;
   setTyping: (trackId: string, userId: string, isTyping: boolean) => void;
   setDmTyping: (withUserId: string, userId: string, isTyping: boolean) => void;
 }
 
-// ─── Context creation ─────────────────────────────────────────────────────────
-
 const AppContext = createContext<AppContextType | undefined>(undefined);
-
-// ─── Auth storage keys ────────────────────────────────────────────────────────
 
 const AUTH_KEY = "nebula.auth.v1";
 const USER_KEY = "nebula.user.v1";
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
-
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { socket, connect: connectSocket, disconnect: disconnectSocket } = useSocket();
-
-  // ─── Core state ────────────────────────────────────────────────────────────
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try { return localStorage.getItem(AUTH_KEY) === "true"; } catch { return false; }
@@ -159,8 +133,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [typingByTrack, setTypingByTrack]       = useState<TypingByTrack>({});
   const [typingByDm, setTypingByDm]             = useState<TypingByDm>({});
 
-  // ─── Bootstrap: load everything on auth ────────────────────────────────────
-
   const bootstrap = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -178,7 +150,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setTracks(allTracks);
       setNotifications(allNotifs as unknown as Notification[]);
 
-      // Build initial presence map from user list
       const now = new Date().toISOString();
       const presMap: PresenceMap = {};
       allUsers.forEach((u) => {
@@ -186,7 +157,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
       setPresence(presMap);
 
-      // Load messages for first (most recent) track
       if (allTracks.length > 0) {
         await loadTrackMessages(allTracks[0].id);
       }
@@ -194,8 +164,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.setItem(USER_KEY, me.id);
     } catch (err: any) {
       console.error("[AppContext] bootstrap failed:", err);
-      // If the stored session is no longer valid (e.g., token expired or server
-      // secret rotated), flip React state to match so downstream effects reset.
       if (err?.response?.status === 401) {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         localStorage.setItem(AUTH_KEY, "false");
@@ -205,7 +173,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } finally {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -221,19 +188,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         trackId: m.trackId ?? trackId,
       }));
       setMessages((prev) => {
-        // Merge without duplicates
         const ids = new Set(prev.map((x) => x.id));
         return [...prev, ...normalised.filter((m: Message) => !ids.has(m.id))];
       });
     } catch {}
   };
 
-  // ─── Socket.IO real-time listeners ─────────────────────────────────────────
-
   useEffect(() => {
     if (!socket) return;
 
-    // Presence updates
     const onPresence = (payload: { userId: string; info: { status: PresenceStatus; lastActive: string; inHuddleTrackId?: string | null } }) => {
       setPresence((prev) => ({
         ...prev,
@@ -241,16 +204,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }));
     };
 
-    // Full presence map sent to us right after we connect — lets us render
-    // who's in a huddle (etc.) immediately instead of waiting for the next
-    // transition.
     const onPresenceSnapshot = (payload: {
       presence: Record<string, { status: PresenceStatus; lastActive: string; inHuddleTrackId?: string | null }>;
     }) => {
       setPresence((prev) => ({ ...prev, ...payload.presence }));
     };
 
-    // Typing indicators
     const onTyping = (payload: { trackId?: string; dmKey?: string; userIds: string[] }) => {
       if (payload.trackId) {
         setTypingByTrack((prev) => ({ ...prev, [payload.trackId!]: payload.userIds }));
@@ -260,7 +219,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     };
 
-    // New track message
     const onMessageNew = (message: any) => {
       const normalised: Message = {
         ...message,
@@ -273,7 +231,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
     };
 
-    // Updated track message (reaction, read, pin)
     const onMessageUpdated = (message: any) => {
       const normalised: Message = { ...message, timestamp: message.createdAt ?? message.timestamp };
       setMessages((prev) =>
@@ -281,7 +238,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
     };
 
-    // New DM
     const onDmNew = (dm: any) => {
       const normalised: DirectMessage = {
         ...dm,
@@ -294,7 +250,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
     };
 
-    // Updated DM (reaction)
     const onDmUpdated = (dm: any) => {
       const normalised: DirectMessage = { ...dm, timestamp: dm.createdAt ?? dm.timestamp };
       setDirectMessages((prev) =>
@@ -302,7 +257,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
     };
 
-    // Incoming real-time notification
     const onNotificationNew = (notif: any) => {
       setNotifications((prev) => {
         if (prev.some((n) => n.id === notif.id)) return prev;
@@ -332,20 +286,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, [socket]);
 
-  // ─── Auth ──────────────────────────────────────────────────────────────────
-
   const applyFreshSession = (accessToken: string | undefined, user: User | undefined) => {
     if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(AUTH_KEY, "true");
     if (user) setCurrentUser(user);
-    // Replace any stale socket with one that uses the fresh token.
-    // `connect()` is a no-op if the same token is already connected, and it
-    // tears down any stale socket when the token differs.
     if (accessToken) connectSocket(accessToken);
-    // Bootstrap runs via the `[isAuthenticated]` effect when this flips from
-    // false → true. The stale-session case (bootstrap failed with 401 at
-    // startup) already flipped isAuthenticated back to false, so this just
-    // flips it forward again — no bounce.
     setIsAuthenticated(true);
   };
 
@@ -414,8 +359,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     window.location.hash = "#/login";
   };
 
-  // ─── Users ─────────────────────────────────────────────────────────────────
-
   const addUser = (user: User) => {
     setUsers((prev) => (prev.some((u) => u.id === user.id) ? prev : [...prev, user]));
   };
@@ -448,7 +391,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const inviteMember = async (email: string): Promise<User> => {
     const invitee = await usersService.invite(email);
-    // Drop-in-or-replace in the local list so admins see the pending row immediately.
     setUsers((prev) => {
       const idx = prev.findIndex((u) => u.id === invitee.id);
       if (idx >= 0) {
@@ -478,8 +420,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // ─── Tasks ─────────────────────────────────────────────────────────────────
-
   const addTask = async (task: Omit<Task, "id" | "createdAt">) => {
     const created = await tasksService.create(task as any);
     setTasks((prev) => [...prev, created as unknown as Task]);
@@ -493,7 +433,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
-    // For non-admin going to DONE → intercept and move to REVIEW
     const isAdmin = currentUser.role === "ADMIN";
     const finalStatus = (!isAdmin && status === TaskStatus.DONE) ? TaskStatus.REVIEW : status;
     const updated = await tasksService.update(taskId, { status: finalStatus as any });
@@ -502,7 +441,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteTask = async (taskId: string) => {
-    // Optimistic delete with rollback on failure
     const prev = tasks;
     setTasks((list) => list.filter((t) => t.id !== taskId));
     try {
@@ -515,7 +453,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const requestTaskApproval = (taskId: string) => {
-    // Optimistic — the server creates the notification on status change
     updateTaskStatus(taskId, TaskStatus.REVIEW).catch(() => {});
   };
 
@@ -532,10 +469,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addTaskReminder = (_taskId: string, _forUserId?: string) => {
-    // Placeholder — implement push notification via server when needed
   };
-
-  // ─── Tracks ────────────────────────────────────────────────────────────────
 
   const addTrack = async (name: string): Promise<Track | null> => {
     try {
@@ -575,7 +509,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const renameTrack = async (trackId: string, name: string) => {
-    // Optimistic update with rollback on failure
     const prevTracks = tracks;
     setTracks((prev) =>
       prev.map((t) => (t.id === trackId ? { ...t, name } : t))
@@ -601,8 +534,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // ─── Messages ─────────────────────────────────────────────────────────────
-
   const sendMessage = (content: string, trackId?: string, _attachments?: Attachment[]) => {
     const tid = trackId ?? tracks[0]?.id;
     if (!tid) return;
@@ -610,7 +541,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       toast.error("You're offline. Message not sent.");
       return;
     }
-    // Emit via socket — the server will broadcast message:new back
     socket.emit("message:send", {
       trackId: tid,
       content,
@@ -643,7 +573,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteMessage = (messageId: string) => {
-    // Optimistic remove — server-side delete not yet wired to a socket event
     setMessages((prev) => prev.filter((m) => m.id !== messageId && m.parentId !== messageId));
     toast.success("Message deleted");
   };
@@ -654,17 +583,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const markTrackRead = (trackId: string) => {
-    // Emit read events for unread messages in this track
     messages
       .filter((m) => (m.trackId ?? tracks[0]?.id) === trackId && !m.readBy?.includes(currentUser.id))
       .forEach((m) => socket?.emit("message:read", { messageId: m.id }));
   };
 
-  // ─── Direct messages ───────────────────────────────────────────────────────
-
   const sendDirectMessage = (toUserId: string, content: string, _attachments?: Attachment[]): string => {
     const tempId = `temp-${Date.now()}`;
-    // Optimistic append
     const optimistic: DirectMessage = {
       id: tempId,
       fromUserId: currentUser.id,
@@ -715,8 +640,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     socket.emit("dm:react", { messageId: dmId, emoji });
   };
 
-  // ─── Notifications ─────────────────────────────────────────────────────────
-
   const markNotificationRead = async (id: string) => {
     await notificationsService.update(id, { read: true });
     setNotifications((prev) =>
@@ -740,8 +663,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     toast.success("All notifications marked as read");
   };
 
-  // ─── Presence / typing ─────────────────────────────────────────────────────
-
   const setUserPresence = (
     userId: string,
     status: PresenceStatus,
@@ -759,7 +680,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             : prev[userId]?.inHuddleTrackId ?? null,
       },
     }));
-    // Tell server
     if (userId === currentUser.id) {
       socket?.emit("presence:set", { status });
     }
@@ -797,8 +717,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // ─── Presence: send online/idle on visibility change ───────────────────────
-
   useEffect(() => {
     if (!isAuthenticated || !currentUser.id) return;
     const onVisibility = () => {
@@ -806,10 +724,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, currentUser.id, socket]);
-
-  // ─── Context value ─────────────────────────────────────────────────────────
 
   return (
     <AppContext.Provider

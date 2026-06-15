@@ -1,10 +1,3 @@
-/**
- * Lightweight per-socket token bucket.
- *
- * A bucket is identified by (socketId, key). Each call to `consume()` removes
- * one token; tokens regenerate at `ratePerSec` up to `capacity`. Returns false
- * if the caller should be rejected.
- */
 
 interface Bucket {
   tokens: number;

@@ -13,8 +13,6 @@ import { setInHuddle } from "../presenceStore";
 type NebServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type NebSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
-// In-memory huddle state
-// Key: roomId → Map<userId, HuddleParticipant & { socketId }>
 const huddleRooms = new Map<
   string,
   Map<string, HuddleParticipant & { socketId: string }>
@@ -28,11 +26,8 @@ const getParticipants = (roomId: string): HuddleParticipant[] =>
 export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
   const { userId, workspaceId } = socket.data;
 
-  // Namespace the huddle room by workspace so a trackId collision across
-  // tenants can never connect two different workspaces' audio.
   const roomKey = (roomId: string) => `ws:${workspaceId}:huddle:${roomId}`;
 
-  // ─── Join huddle room ────────────────────────────────────────────────────────
   socket.on("huddle:join", ({ roomId }) => {
     const key = roomKey(roomId);
     socket.join(key);
@@ -49,10 +44,8 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
 
     const participants = getParticipants(key);
 
-    // Send current room state to the new joiner
     socket.emit("huddle:state", { roomId, participants });
 
-    // Tell everyone else in this huddle a new user joined
     socket.to(key).emit("huddle:user-joined", {
       roomId,
       userId,
@@ -65,7 +58,6 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
     }
   });
 
-  // ─── Leave huddle room ───────────────────────────────────────────────────────
   const leaveHuddle = (roomId: string) => {
     const key = roomKey(roomId);
     const wasInRoom = huddleRooms.get(key)?.has(userId) ?? false;
@@ -91,7 +83,6 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
     logger.info(`${userId} left huddle ${roomId}`);
   });
 
-  // ─── WebRTC signaling relay ──────────────────────────────────────────────────
   socket.on("huddle:offer", ({ roomId, toUserId, sdp }) => {
     const target = huddleRooms.get(roomKey(roomId))?.get(toUserId);
     if (!target) return;
@@ -110,7 +101,6 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
     getIO().to(target.socketId).emit("huddle:ice", { fromUserId: userId, candidate });
   });
 
-  // ─── Mute / hand raise ───────────────────────────────────────────────────────
   socket.on("huddle:mute", ({ roomId, muted }) => {
     const key = roomKey(roomId);
     const participant = huddleRooms.get(key)?.get(userId);
@@ -135,11 +125,9 @@ export const registerHuddleHandlers = (_io: NebServer, socket: NebSocket) => {
     });
   });
 
-  // ─── Auto-leave all huddles on disconnect ────────────────────────────────────
   socket.on("disconnect", () => {
     for (const [key, participants] of huddleRooms.entries()) {
       if (participants.has(userId)) {
-        // Extract roomId from "ws:<wsId>:huddle:<roomId>" format
         const match = key.match(/^ws:[^:]+:huddle:(.+)$/);
         const roomId = match ? match[1] : key;
         leaveHuddle(roomId);

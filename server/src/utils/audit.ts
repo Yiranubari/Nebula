@@ -20,10 +20,6 @@ interface AuditContext {
   [key: string]: unknown;
 }
 
-/**
- * Emit a structured audit log line. These are indexed separately in most log
- * aggregators via the `audit: true` tag.
- */
 export function audit(event: AuditEvent, ctx: AuditContext = {}) {
   logger.info({ audit: true, event, ...ctx }, `audit:${event}`);
 }

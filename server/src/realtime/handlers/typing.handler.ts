@@ -10,10 +10,8 @@ import { consume } from "../socketRateLimit";
 type NebServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type NebSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
-// Maps roomKey → Set of userIds currently typing
 const typingStore = new Map<string, Set<string>>();
 
-/** Returns a consistent key for a track or DM conversation */
 const getKey = (payload: { trackId?: string; dmKey?: string }): string | null => {
   if (payload.trackId) return `track:${payload.trackId}`;
   if (payload.dmKey) return `dm:${payload.dmKey}`;
@@ -27,8 +25,6 @@ const broadcastTyping = (
   dmKey?: string
 ) => {
   const userIds = Array.from(typingStore.get(key) ?? []);
-  // Track indicators scope to that track's room. DM indicators go to the
-  // sockets of the two participants only.
   if (trackId) {
     io.to(`track:${trackId}`).emit("typing:update", { trackId, userIds });
     return;
@@ -44,7 +40,6 @@ export const registerTypingHandlers = (io: NebServer, socket: NebSocket) => {
   const userId = socket.data.userId;
 
   socket.on("typing:start", (payload) => {
-    // Typing can fire on every keystroke — keep the bucket loose
     if (!consume(socket.id, "typing", { capacity: 20, ratePerSec: 10 })) return;
 
     const key = getKey(payload);
@@ -68,7 +63,6 @@ export const registerTypingHandlers = (io: NebServer, socket: NebSocket) => {
     broadcastTyping(io, key, payload.trackId, payload.dmKey);
   });
 
-  // Auto-stop on disconnect
   socket.on("disconnect", () => {
     for (const [key, users] of typingStore.entries()) {
       if (!users.has(userId)) continue;

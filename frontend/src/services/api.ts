@@ -7,21 +7,11 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Be generous — Render's free tier can take up to ~60s to wake a sleeping
-  // instance. Anything longer is either a real outage or a hung request.
   timeout: 75_000,
 });
 
-/**
- * Fire-and-forget ping to `/health`. Hosts that spin down on inactivity
- * (Render free, Fly autostop, etc.) take tens of seconds to wake on the
- * first request. Calling this as soon as the app loads warms the instance
- * so the user's actual action — clicking Sign in, loading the dashboard —
- * hits a hot server instead of timing out.
- */
 export async function warmupBackend(): Promise<void> {
   try {
-    // Use the base host, not /api, since /health is mounted at the app root.
     const base = api.defaults.baseURL?.replace(/\/api\/?$/, "") ?? "";
     await fetch(`${base}/health`, {
       method: "GET",
@@ -29,11 +19,9 @@ export async function warmupBackend(): Promise<void> {
       cache: "no-store",
     });
   } catch {
-    // Swallow — this is a best-effort warmup; real requests will still fire.
   }
 }
 
-// Attach the stored access token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('nebula.accessToken');
   if (token) {
@@ -42,12 +30,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/**
- * Single in-flight refresh promise. When multiple requests 401 in parallel,
- * they all await the same refresh rather than each firing one — otherwise the
- * server's atomic rotation would reject all but the first and cause the
- * remaining requests to fail + log the user out.
- */
 let refreshInFlight: Promise<string | null> | null = null;
 
 const doRefresh = async (): Promise<string | null> => {
@@ -60,12 +42,6 @@ const doRefresh = async (): Promise<string | null> => {
   return null;
 };
 
-/**
- * Server wraps every successful payload as `{ status: "success", data: … }`
- * (see `server/src/core/BaseController.ts`). Unwrap once here so every service
- * call can treat `res.data` as the real payload. Error responses keep their
- * original shape so the error interceptor + toasts still read `message`.
- */
 api.interceptors.response.use(
   (response) => {
     const body = response.data;
@@ -106,8 +82,6 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Auto-refresh on 401 (token expired) — attempt once per request, sharing
-    // a single refresh across concurrent failures.
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
@@ -134,9 +108,6 @@ api.interceptors.response.use(
     const message =
       error.response?.data?.message || error.message || 'An error occurred';
 
-    // Suppress 401 redirect noise on auth pages themselves. Let auth endpoints
-    // (login/register/verify-otp) surface their own error toast so users see
-    // "Invalid credentials" instead of a silent redirect.
     if (error.response?.status === 401) {
       const url = originalRequest?.url || '';
       if (

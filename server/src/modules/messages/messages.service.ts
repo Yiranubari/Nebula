@@ -4,10 +4,6 @@ import { AppError } from "../../utils/AppError";
 
 type Role = "ADMIN" | "MEMBER";
 
-/**
- * Admins can read and write in every track in their workspace regardless of
- * explicit membership. Members must be on the track roster.
- */
 const canAccessTrack = (role: Role, isMember: boolean) =>
   role === "ADMIN" || isMember;
 
@@ -19,7 +15,6 @@ export class MessagesService extends BaseService {
     return !!member;
   }
 
-  /** Fetches a track, verifying it's in the caller's workspace. */
   private async getTrackInWorkspace(trackId: string, workspaceId: string) {
     const track = await this.prisma.track.findFirst({
       where: { id: trackId, workspaceId },
@@ -98,7 +93,6 @@ export class MessagesService extends BaseService {
     };
   }
 
-  /** Lookup a message and verify it's in the caller's workspace. */
   private async getScopedMessage(messageId: string, workspaceId: string) {
     const message = await this.prisma.message.findFirst({
       where: { id: messageId, workspaceId },

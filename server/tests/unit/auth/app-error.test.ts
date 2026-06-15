@@ -1,7 +1,3 @@
-/**
- * Unit tests for the AppError utility.
- * These have zero dependencies — no Prisma, no DB.
- */
 
 import { describe, it, expect } from "vitest";
 import { AppError } from "../../../src/utils/AppError";

@@ -26,7 +26,6 @@ import type { User } from "@prisma/client";
 
 type Role = "ADMIN" | "MEMBER";
 
-/** Turn a human-friendly workspace name into a URL-safe slug. */
 function slugify(name: string): string {
   const base = name
     .toLowerCase()
@@ -35,8 +34,6 @@ function slugify(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
-  // Append a short random suffix so concurrent signups with the same name
-  // don't collide on Workspace.slug's unique index.
   const suffix = randomBytes(3).toString("hex");
   return `${base || "workspace"}-${suffix}`;
 }
@@ -52,11 +49,8 @@ export class AuthService extends BaseService {
 
     const passwordHash = await hashPassword(data.password);
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Every public signup creates a new workspace where the signer is ADMIN.
-    // Other people join that workspace only via admin invite — there's no way
-    // to land in an existing workspace through the public register flow.
     const workspaceName =
       data.workspaceName?.trim() || `${data.name.trim()}'s Workspace`;
 
@@ -87,9 +81,6 @@ export class AuthService extends BaseService {
           data: { workspaceId: workspace.id },
         });
 
-        // Seed a default #general track so the new workspace isn't empty when
-        // the admin first logs in. The track is flagged isDefault so invitees
-        // auto-join it on account activation.
         const general = await tx.track.create({
           data: {
             name: "general",
@@ -104,9 +95,6 @@ export class AuthService extends BaseService {
         return { user: updatedUser };
       },
       {
-        // Neon's serverless pooler can take 2-4 seconds to wake a cold branch.
-        // Five sequential queries at ~1s each comfortably blows the default 5s
-        // interactive transaction window, so we give the whole thing 20s.
         maxWait: 10_000,
         timeout: 20_000,
       }
@@ -149,8 +137,6 @@ export class AuthService extends BaseService {
       },
     });
 
-    // Auto-join every track marked as default (e.g. #general) in the user's
-    // workspace so verified accounts land inside a live conversation.
     if (verifiedUser.workspaceId) {
       await this.joinDefaultTracks(verifiedUser.id, verifiedUser.workspaceId);
     }
@@ -245,15 +231,10 @@ export class AuthService extends BaseService {
       where: { email: data.email },
     });
 
-    // Return the same error shape whether the user exists or not to avoid
-    // leaking account existence.
     const invalid = new AppError(400, "Invalid or expired OTP");
 
     if (!user) throw invalid;
 
-    // Password reset is only meaningful for verified accounts — this also
-    // prevents a signup-verification OTP from being reused to reset a
-    // never-verified account.
     if (!user.isVerified) throw invalid;
 
     if (
@@ -275,8 +256,6 @@ export class AuthService extends BaseService {
           otpExpiresAt: null,
         },
       }),
-      // Invalidate all existing sessions so the reset also logs the user out
-      // of any compromised devices.
       this.prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
     ]);
 
@@ -288,8 +267,6 @@ export class AuthService extends BaseService {
     try {
       const payload = verifyRefreshToken(token);
 
-      // Atomically consume the old token — if another concurrent request
-      // already rotated it, count will be 0 and we reject.
       const { count } = await this.prisma.refreshToken.deleteMany({
         where: { token, userId: payload.userId },
       });
@@ -336,7 +313,7 @@ export class AuthService extends BaseService {
 
   private async storeRefreshToken(userId: string, token: string) {
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
     await this.prisma.refreshToken.create({
       data: {
@@ -352,14 +329,6 @@ export class AuthService extends BaseService {
     return rest;
   }
 
-  // ─── Invite flow ───────────────────────────────────────────────────────────
-
-  /**
-   * An admin invites someone by email. If no user with that email exists we
-   * pre-create a pending account (isVerified: false) with a throwaway password
-   * hash. If a pending invite already exists for this email we just refresh
-   * the OTP and resend the email — idempotent from the admin's point of view.
-   */
   async invite(
     actor: { id: string; role: Role; name: string; workspaceId: string | null },
     data: InviteDto
@@ -376,18 +345,12 @@ export class AuthService extends BaseService {
     });
 
     if (existing && existing.isVerified) {
-      // An existing verified user might already belong to another workspace —
-      // Nebula is single-workspace-per-user, so stealing them would break the
-      // other tenant's data. Fail clearly.
       throw new AppError(
         400,
         "That email already belongs to a verified account."
       );
     }
 
-    // If a pending invite exists for a DIFFERENT workspace, don't silently
-    // rewrite its tenancy — that would let another admin hijack a pending
-    // invite. Reject with a clear message.
     if (
       existing &&
       existing.workspaceId &&
@@ -432,7 +395,6 @@ export class AuthService extends BaseService {
       });
     }
 
-    // Fetch the workspace name so the email can say "Join <workspace> on Nebula".
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: actor.workspaceId },
       select: { name: true },
@@ -458,9 +420,6 @@ export class AuthService extends BaseService {
     return { message: "Invitation sent", user: this.sanitizeUser(invitee) };
   }
 
-  /**
-   * Invitee sets their real name + password + OTP to activate the account.
-   */
   async completeInvite(data: CompleteInviteDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: data.email },
@@ -518,10 +477,6 @@ export class AuthService extends BaseService {
     };
   }
 
-  /**
-   * Add a user to every track marked `isDefault`. Safe to call for users who
-   * are already members of some or all default tracks (uses skipDuplicates).
-   */
   private async joinDefaultTracks(userId: string, workspaceId: string) {
     const defaults = await this.prisma.track.findMany({
       where: { isDefault: true, workspaceId },

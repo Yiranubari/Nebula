@@ -29,7 +29,6 @@ async function main() {
     shuttingDown = true;
     logger.info({ signal }, "Shutting down");
 
-    // Close Socket.IO — stops accepting new WS connections and disconnects existing ones
     try {
       await new Promise<void>((resolve) => {
         try {
@@ -42,7 +41,6 @@ async function main() {
       logger.warn({ err }, "Error closing Socket.IO");
     }
 
-    // Close the HTTP server (stop accepting new requests, drain in-flight)
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });

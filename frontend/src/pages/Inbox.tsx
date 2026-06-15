@@ -38,11 +38,9 @@ const Inbox: React.FC = () => {
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
-  // File uploads
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  // Voice recording
   const [isRecording, setIsRecording] = useState(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -50,7 +48,6 @@ const Inbox: React.FC = () => {
   const [recSeconds, setRecSeconds] = useState(0);
   const recTimerRef = useRef<number | null>(null);
 
-  // Audio playback UI (WhatsApp-style)
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState<Record<string, number>>(
     {},
@@ -61,7 +58,6 @@ const Inbox: React.FC = () => {
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const playbackUrlsRef = useRef<Record<string, string>>({});
 
-  // WhatsApp-style quick reactions (same as Team Chat)
   const reactionQuick = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
   const [reactionPopoverId, setReactionPopoverId] = useState<string | null>(
     null,
@@ -193,7 +189,6 @@ const Inbox: React.FC = () => {
     setEmojiPickerId(null);
     setEmojiQuery("");
 
-    // Clear typing when switching conversations
     if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = null;
     if (withUserId) setDmTyping(withUserId, currentUser.id, false);
@@ -225,12 +220,10 @@ const Inbox: React.FC = () => {
       const entry = map.get(other)!;
       const ts = Date.parse(m.timestamp);
       if (!Number.isNaN(ts) && ts > entry.lastTs) entry.lastTs = ts;
-      // Unread if message is to me and I haven't read it
       const isToMe = m.toUserId === me;
       const readBy = new Set(m.readBy || []);
       if (isToMe && !readBy.has(me)) entry.unread += 1;
     });
-    // Convert to array and sort by lastTs desc
     return Array.from(map.values()).sort((a, b) => b.lastTs - a.lastTs);
   }, [directMessages, currentUser.id]);
 
@@ -253,10 +246,8 @@ const Inbox: React.FC = () => {
 
   useEffect(() => {
     if (selectedUser) markDmThreadRead(selectedUser.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser?.id]);
 
-  // Auto-select first conversation if none selected
   useEffect(() => {
     if (!withUserId && conversations.length > 0) {
       setSearchParams({ with: conversations[0].userId });
@@ -387,7 +378,6 @@ const Inbox: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        {/* Conversation list */}
         <div className="md:col-span-4 lg:col-span-3 glass-panel rounded-2xl overflow-hidden">
           <div className=" px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300">
             Conversations
@@ -446,7 +436,6 @@ const Inbox: React.FC = () => {
           </div>
         </div>
 
-        {/* Thread */}
         <div className="md:col-span-8 lg:col-span-9 glass-panel rounded-2xl flex flex-col min-h-[60vh]">
           <div className="px-4 py-3 flex items-center gap-3">
             {selectedUser ? (
@@ -608,7 +597,6 @@ const Inbox: React.FC = () => {
                                       ref={(el) => {
                                         if (!el) return;
                                         audioRefs.current[att.id] = el;
-                                        // Ensure correct src
                                         if (el.src !== url) el.src = url;
                                         const onTime = () => {
                                           const t = el.currentTime || 0;

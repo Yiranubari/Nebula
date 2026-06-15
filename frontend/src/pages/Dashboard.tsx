@@ -39,12 +39,11 @@ const Dashboard = () => {
   const todoTasks = tasks.filter((t) => t.status === TaskStatus.TODO).length;
   const reviewTasks = tasks.filter((t) => t.status === TaskStatus.REVIEW).length;
 
-  // Soft pastel palette matching brand gradient (indigo → purple → pink → emerald)
   const pieData = [
-    { name: "To Do", value: todoTasks, color: "#cbd5e1" }, // slate-300
-    { name: "In Progress", value: inProgressTasks, color: "#a5b4fc" }, // indigo-300
-    { name: "Review", value: reviewTasks, color: "#fcd34d" }, // amber-300
-    { name: "Done", value: completedTasks, color: "#86efac" }, // emerald-300
+    { name: "To Do", value: todoTasks, color: "#cbd5e1" },
+    { name: "In Progress", value: inProgressTasks, color: "#a5b4fc" },
+    { name: "Review", value: reviewTasks, color: "#fcd34d" },
+    { name: "Done", value: completedTasks, color: "#86efac" },
   ].filter((d) => d.value > 0);
 
   const barData = users.map((user) => {
@@ -134,7 +133,6 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Donut chart — soft palette, centered completion rate */}
         <div className="glass-panel p-6 rounded-2xl h-96 relative">
           <h3 className="text-base font-medium text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2 tracking-tight">
             <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-indigo-400 to-purple-400" />
@@ -187,7 +185,6 @@ const Dashboard = () => {
               />
             </PieChart>
           </ResponsiveContainer>
-          {/* Centered total count */}
           <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-[58%] flex flex-col items-center">
             <span className="text-3xl font-semibold tracking-tight text-slate-800 dark:text-white">
               {totalTasks}
@@ -198,7 +195,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Horizontal bars — softer, more readable with long names */}
         <div className="glass-panel p-6 rounded-2xl h-96">
           <h3 className="text-base font-medium text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2 tracking-tight">
             <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />

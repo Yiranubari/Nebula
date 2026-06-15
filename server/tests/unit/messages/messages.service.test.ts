@@ -25,7 +25,6 @@ const baseMessage = {
 
 beforeEach(() => resetPrismaMocks());
 
-/** Helper: satisfy the track-in-workspace preflight in sendMessage/getMessages. */
 const mockTrackInWorkspace = (hit = true) => {
   prismaMock.track.findFirst.mockResolvedValueOnce(
     hit ? { id: "track1" } : null

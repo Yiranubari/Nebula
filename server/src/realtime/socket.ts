@@ -32,7 +32,6 @@ export const initSocket = (httpServer: http.Server) => {
     },
   });
 
-  // ─── Authentication middleware ──────────────────────────────────────────────
   io.use(async (socket, next) => {
     try {
       const token =
@@ -62,21 +61,16 @@ export const initSocket = (httpServer: http.Server) => {
     }
   });
 
-  // ─── Connection handling ────────────────────────────────────────────────────
   io.on("connection", async (socket) => {
     const { userId, userName, workspaceId } = socket.data;
     logger.info(
       `User connected via socket: ${userName} (${userId}) ws=${workspaceId}`
     );
 
-    // Auto-join the workspace room — used for presence + any workspace-wide
-    // broadcast (e.g., new member joined).
     socket.join(`ws:${workspaceId}`);
 
-    // Auto-join the user's private notification room
     socket.join(`user:${userId}`);
 
-    // Auto-join every track the user is a member of in this workspace.
     try {
       const memberships = await prisma.trackMember.findMany({
         where: { userId, track: { workspaceId } },
@@ -89,7 +83,6 @@ export const initSocket = (httpServer: http.Server) => {
       logger.error({ err }, "Failed to auto-join track rooms");
     }
 
-    // ─── Register all event handlers ──────────────────────────────────────────
     registerPresenceHandlers(io, socket);
     registerTypingHandlers(io, socket);
     registerChatHandlers(io, socket);

@@ -34,7 +34,6 @@ const Login = () => {
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const onGoogleSignIn = () => {
-    // UI-only placeholder: backend/OAuth wiring comes later.
   };
 
   const isValidEmail = (s: string) =>
@@ -65,7 +64,6 @@ const Login = () => {
 
         const ok = await doLogin(email, password);
         if (!ok) {
-          // Global axios interceptor surfaces the server's error message as a toast.
           return;
         }
         navigate("/dashboard");
@@ -118,7 +116,6 @@ const Login = () => {
     }
         const ok = await doVerify(email, otpValue);
         if (!ok) {
-          // Toast shows error
           return;
         }
         navigate("/dashboard");
@@ -134,7 +131,6 @@ const Login = () => {
       toast.error("Passwords do not match.");
       return;
     }
-    // UI-only: pretend reset succeeded.
     setNewPassword("");
     setConfirmPassword("");
     setOtpDigits(Array.from({ length: 6 }, () => ""));

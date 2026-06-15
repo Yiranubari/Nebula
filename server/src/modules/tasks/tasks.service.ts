@@ -6,7 +6,6 @@ import { TaskStatus, Priority } from "@prisma/client";
 
 type Role = "ADMIN" | "MEMBER";
 
-// Fields an assignee can edit on their own task. Admins can edit everything.
 const ASSIGNEE_EDITABLE_FIELDS = new Set<keyof UpdateTaskDto>([
   "status",
   "description",
@@ -16,8 +15,6 @@ const ASSIGNEE_EDITABLE_FIELDS = new Set<keyof UpdateTaskDto>([
 
 export class TasksService extends BaseService {
   async createTask(userId: string, workspaceId: string, data: CreateTaskDto) {
-    // Reject cross-workspace assignee — admins can only assign tasks to people
-    // in their own workspace.
     if (data.assigneeId) {
       const assignee = await this.prisma.user.findUnique({
         where: { id: data.assigneeId },
@@ -96,7 +93,6 @@ export class TasksService extends BaseService {
       );
     }
 
-    // If assignee is changing, make sure the new assignee is in this workspace.
     if (data.assigneeId && data.assigneeId !== existingTask.assigneeId) {
       const next = await this.prisma.user.findUnique({
         where: { id: data.assigneeId },
@@ -107,7 +103,6 @@ export class TasksService extends BaseService {
       }
     }
 
-    // Non-admins can only modify a whitelist of fields
     let patch: UpdateTaskDto = data;
     if (!isAdmin) {
       const filtered: UpdateTaskDto = {};

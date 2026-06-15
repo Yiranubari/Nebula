@@ -46,7 +46,6 @@ const TaskBoard = () => {
     string | null
   >(null);
 
-  // Filters / Search / Sort
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | TaskStatus>("ALL");
   const [filterAssignee, setFilterAssignee] = useState<string>("ALL");
@@ -501,7 +500,6 @@ const TaskBoard = () => {
         </div>
       </div>
 
-      {/* Confirm Delete Modal */}
       {confirmTask && (
         <div
           className="fixed inset-0 z-40 flex items-center justify-center"
@@ -546,7 +544,6 @@ const TaskBoard = () => {
                       undoTimerRef.current = null;
                     }, 5000);
                   } catch {
-                    // context rolled the task back + interceptor toasted
                   }
                 }}
               >
@@ -557,8 +554,6 @@ const TaskBoard = () => {
         </div>
       )}
 
-      {/* Undo Toast */}
-      {/* Edit Task Modal */}
       {editTask && (
         <div
           className="fixed inset-0 z-40 flex items-center justify-center"
@@ -702,7 +697,6 @@ const TaskBoard = () => {
                     await updateTask(editTask);
                     setEditTask(null);
                   } catch {
-                    // interceptor toasted the error
                   } finally {
                     setIsSavingEdit(false);
                   }
@@ -796,7 +790,6 @@ const TaskBoard = () => {
           </div>
         </div>
       )}
-      {/* Task Detail Modal — click any card to see its full content */}
       {detailTask &&
         (() => {
           const assignee = users.find((u) => u.id === detailTask.assigneeId);
@@ -815,7 +808,6 @@ const TaskBoard = () => {
                 onClick={() => setDetailTask(null)}
               />
               <div className="relative bg-white dark:bg-[#0f172a] rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:w-[95%] sm:max-w-2xl max-h-[90vh] flex flex-col z-50 overflow-hidden">
-                {/* Header */}
                 <div className="relative p-6 pb-4 ">
                   <button
                     className="absolute top-4 right-4 p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-500/10 dark:hover:bg-white/[0.05] transition-colors"
@@ -841,7 +833,6 @@ const TaskBoard = () => {
                   </h2>
                 </div>
 
-                {/* Scrollable body */}
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
                   {detailTask.description && (
                     <section>
@@ -949,7 +940,6 @@ const TaskBoard = () => {
                   </section>
                 </div>
 
-                {/* Footer actions */}
                 <div className="px-6 py-4 flex flex-wrap items-center justify-end gap-2 bg-slate-50/50 dark:bg-white/[0.01]">
                   <button
                     className="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:bg-slate-500/10 dark:hover:bg-white/[0.05] transition-colors text-sm"

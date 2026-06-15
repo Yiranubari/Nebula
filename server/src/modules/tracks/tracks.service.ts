@@ -7,8 +7,6 @@ type Role = "ADMIN" | "MEMBER";
 
 export class TracksService extends BaseService {
   async createTrack(userId: string, workspaceId: string, data: CreateTrackDto) {
-    // Bootstrap rule within this workspace: if there's no default track yet,
-    // the first track becomes the default so invitees have somewhere to land.
     const existingDefault = await this.prisma.track.findFirst({
       where: { isDefault: true, workspaceId },
       select: { id: true },
@@ -74,7 +72,6 @@ export class TracksService extends BaseService {
 
     if (!track) throw new AppError(404, "Track not found");
 
-    // Admins see every track in their workspace even if they aren't members.
     const isMember = track.members.some((m) => m.userId === userId);
     if (role !== "ADMIN" && !isMember) {
       throw new AppError(403, "Not a member of this track");
@@ -92,8 +89,6 @@ export class TracksService extends BaseService {
   ) {
     await this.getTrackById(trackId, actorUserId, workspaceId, actorRole);
 
-    // Verify target is in the same workspace — you cannot pull a user from
-    // another tenant into your track.
     const target = await this.prisma.user.findUnique({
       where: { id: targetUserId },
       select: { workspaceId: true },
@@ -143,8 +138,6 @@ export class TracksService extends BaseService {
       throw new AppError(403, "Only admins can update a track");
     }
 
-    // Flipping this track to default demotes any existing defaults in the
-    // same workspace so there's only ever one "#general" per workspace.
     if (data.isDefault === true) {
       await this.prisma.track.updateMany({
         where: { isDefault: true, workspaceId, NOT: { id: trackId } },

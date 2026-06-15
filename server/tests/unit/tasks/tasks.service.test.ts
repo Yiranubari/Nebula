@@ -27,7 +27,6 @@ beforeEach(() => resetPrismaMocks());
 
 describe("TasksService.createTask", () => {
   it("creates task and generates ASSIGNED notification", async () => {
-    // Workspace check on the assignee
     prismaMock.user.findUnique.mockResolvedValueOnce({ workspaceId: WS });
     prismaMock.task.create.mockResolvedValueOnce(baseTask);
     prismaMock.notification.create.mockResolvedValueOnce({});
@@ -40,7 +39,6 @@ describe("TasksService.createTask", () => {
 
     expect(result.id).toBe("t1");
     expect(prismaMock.notification.create).toHaveBeenCalledOnce();
-    // Workspace stamped on the create
     expect(prismaMock.task.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ workspaceId: WS }),
@@ -97,9 +95,7 @@ describe("TasksService.getTaskById", () => {
 
 describe("TasksService.updateTask", () => {
   it("updates task and notifies new assignee", async () => {
-    // getTaskById (findFirst) returns existing task
     prismaMock.task.findFirst.mockResolvedValueOnce(baseTask);
-    // assignee workspace check
     prismaMock.user.findUnique.mockResolvedValueOnce({ workspaceId: WS });
     prismaMock.task.update.mockResolvedValueOnce({ ...baseTask, assigneeId: "u3" });
     prismaMock.notification.create.mockResolvedValueOnce({});

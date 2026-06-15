@@ -3,7 +3,6 @@ import { AuthService } from "../../../src/modules/auth/auth.service";
 import { prismaMock, resetPrismaMocks } from "../../helpers/prisma-mock";
 import { AppError } from "../../../src/utils/AppError";
 
-// ── Hoist mocks ──────────────────────────────────────────────────────────────
 vi.mock("../../../src/utils/password", () => ({
   hashPassword: vi.fn().mockResolvedValue("hashed_pw"),
   comparePassword: vi.fn().mockResolvedValue(true),
@@ -49,8 +48,6 @@ const baseWorkspace = {
 
 beforeEach(() => resetPrismaMocks());
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 describe("AuthService.register", () => {
   it("throws 400 if email already in use", async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce(baseUser);
@@ -61,7 +58,6 @@ describe("AuthService.register", () => {
 
   it("creates user + workspace + default track and sends OTP email", async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce(null);
-    // Inside the transaction: user.create → workspace.create → user.update → track.create → trackMember.create
     prismaMock.user.create.mockResolvedValueOnce({
       ...baseUser,
       isVerified: false,
@@ -147,7 +143,6 @@ describe("AuthService.verifyOtp", () => {
       otpExpiresAt: new Date(Date.now() + 60_000),
     });
     prismaMock.user.update.mockResolvedValueOnce(baseUser);
-    // joinDefaultTracks looks up default tracks in the user's workspace
     prismaMock.track.findMany.mockResolvedValueOnce([]);
     prismaMock.refreshToken.create.mockResolvedValueOnce({});
 

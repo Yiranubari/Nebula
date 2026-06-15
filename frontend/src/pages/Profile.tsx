@@ -36,7 +36,6 @@ const Profile = () => {
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    // Clear the input so selecting the same file twice still fires onChange.
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -45,7 +44,7 @@ const Profile = () => {
       toast.error(msg);
       return;
     }
-    const maxBytes = 2 * 1024 * 1024; // 2MB
+    const maxBytes = 2 * 1024 * 1024;
     if (file.size > maxBytes) {
       const msg = "Image is too large (max 2MB).";
       setError(msg);
@@ -55,9 +54,6 @@ const Profile = () => {
 
     setError("");
     setIsUploadingAvatar(true);
-    // Show an instant local preview while the upload is in flight so the UI
-    // feels responsive. ObjectURL is cheap compared to reading a base64 copy
-    // into state, and we revoke it as soon as the real URL lands.
     const previewUrl = URL.createObjectURL(file);
     const previousUrl = avatarUrl;
     setAvatarUrl(previewUrl);
@@ -94,7 +90,6 @@ const Profile = () => {
         avatar: avatarUrl,
       });
     } catch {
-      // API interceptor shows the error toast; keep inline hint too.
       setError("Could not save changes. Please try again.");
     } finally {
       setIsSaving(false);
@@ -238,7 +233,6 @@ const Profile = () => {
         {error && <p className="mt-3 text-red-500 text-sm">{error}</p>}
       </div>
 
-      {/* Danger Zone */}
       {isSelf && (
         <div className="mt-8 bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-red-200 dark:border-red-500/40">
           <h2 className="text-lg font-semibold text-red-700 mb-2">
@@ -293,7 +287,6 @@ const Profile = () => {
                     await removeUser(currentUser.id);
                     setConfirmDelete(false);
                   } catch {
-                    // API interceptor shows the error toast.
                   } finally {
                     setIsDeleting(false);
                   }

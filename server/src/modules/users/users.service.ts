@@ -6,7 +6,6 @@ import { audit } from "../../utils/audit";
 type Role = "ADMIN" | "MEMBER";
 
 export class UsersService extends BaseService {
-  /** Always includes workspaceId — the client needs it to display context. */
   private readonly publicSelect = {
     id: true,
     name: true,
@@ -121,7 +120,6 @@ export class UsersService extends BaseService {
     });
     if (!target) throw new AppError(404, "User not found");
 
-    // Never let a workspace end up with zero admins.
     if (target.role === "ADMIN" && newRole === "MEMBER") {
       const adminCount = await this.prisma.user.count({
         where: { workspaceId, role: "ADMIN" },

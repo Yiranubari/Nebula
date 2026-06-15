@@ -3,7 +3,6 @@ import type { DirectMessage } from "./dm.types";
 import type { Notification } from "./notification.types";
 import type { PresenceStatus, PresenceInfo } from "./presence.types";
 
-
 export interface ClientToServerEvents {
   "presence:set": (payload: { status: PresenceStatus }) => void;
 
@@ -36,7 +35,6 @@ export interface ClientToServerEvents {
   "huddle:hand": (payload: { roomId: string; raised: boolean }) => void;
 }
 
-
 export interface HuddleParticipant {
   userId: string;
   muted: boolean;
@@ -44,36 +42,29 @@ export interface HuddleParticipant {
 }
 
 export interface ServerToClientEvents {
-  // Presence
   "presence:update": (payload: {
     userId: string;
     info: PresenceInfo;
   }) => void;
 
-  /** Initial full presence snapshot sent to a socket when it connects. */
   "presence:snapshot": (payload: {
     presence: Record<string, PresenceInfo>;
   }) => void;
 
-  // Typing
   "typing:update": (payload: {
     trackId?: string;
     dmKey?: string;
     userIds: string[];
   }) => void;
 
-  // Track messages
   "message:new": (message: Message) => void;
   "message:updated": (message: Message) => void;
 
-  // Direct messages
   "dm:new": (message: DirectMessage) => void;
   "dm:updated": (message: DirectMessage) => void;
 
-  // Notifications
   "notification:new": (notification: Notification) => void;
 
-  // Huddle / WebRTC signalling (server relays these between peers)
   "huddle:user-joined": (payload: { roomId: string; userId: string; participants: HuddleParticipant[] }) => void;
   "huddle:user-left": (payload: { roomId: string; userId: string; participants: HuddleParticipant[] }) => void;
   "huddle:state": (payload: { roomId: string; participants: HuddleParticipant[] }) => void;
@@ -82,12 +73,10 @@ export interface ServerToClientEvents {
   "huddle:ice": (payload: { fromUserId: string; candidate: RTCIceCandidateInit }) => void;
 }
 
-// ─── Inter-server events (Socket.IO cluster support, future use) ────────────
 export interface InterServerEvents {
   ping: () => void;
 }
 
-// ─── Per-socket data ────────────────────────────────────────────────────────
 export interface SocketData {
   userId: string;
   userName: string;

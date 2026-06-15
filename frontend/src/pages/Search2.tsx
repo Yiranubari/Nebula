@@ -53,8 +53,6 @@ export default function SearchPage() {
     await runWithDelayedSpinner({
       setLoading: setIsSearching,
       fn: async () => {
-        // In this demo app the search is local, but this keeps the UX correct
-        // when the app later switches to server-backed search.
         if (isProbablySlowNetwork()) {
           await sleep(650);
         }
@@ -66,7 +64,6 @@ export default function SearchPage() {
   const filtered = useMemo(() => {
     const q = query.trim();
 
-    // Don't show "pre-searched" results. Require a non-empty query.
     if (!q) {
       return { messageResults: [], fileResults: [], taskResults: [] };
     }

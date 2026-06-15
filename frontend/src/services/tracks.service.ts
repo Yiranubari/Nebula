@@ -11,8 +11,6 @@ export interface UpdateTrackPayload {
   removeMemberIds?: string[];
 }
 
-// The server returns tracks with members as TrackMember[] (with nested user).
-// We normalise to Track (with members as string[]) for the frontend store.
 function normalise(raw: any): Track {
   const memberIds: string[] = Array.isArray(raw.members)
     ? raw.members.map((m: any) => (typeof m === "string" ? m : m.userId ?? m.user?.id ?? m))

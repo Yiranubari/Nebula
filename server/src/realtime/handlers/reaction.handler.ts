@@ -12,29 +12,10 @@ import { getIO } from "../socket";
 type NebServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type NebSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
-/**
- * Reaction handler for both track messages and DMs.
- * 
- * NOTE: Reaction toggling is also handled inline inside chat.handler.ts and
- * dm.handler.ts (via `message:react` and `dm:react` events respectively).
- * This file provides a centralised helper and can be used for future
- * cross-cutting reaction logic (e.g. generating REACTION notifications).
- *
- * Notification emission lives here so it is decoupled from the raw message handlers.
- */
 export const registerReactionHandlers = (_io: NebServer, _socket: NebSocket) => {
-  // Reactions themselves are handled via message:react / dm:react in their
-  // respective handlers.  This handler's primary responsibility is to fire
-  // REACTION notifications via the notification:new event.
 
-  // The chat.handler.ts can call emitReactionNotification after updating DB.
-  // Keeping this as a placeholder so socket.ts can import it predictably.
 };
 
-/**
- * After persisting a reaction, call this to create a notification and push
- * it real-time to the message author.
- */
 export const emitReactionNotification = async (
   reactorId: string,
   workspaceId: string,
@@ -46,7 +27,7 @@ export const emitReactionNotification = async (
       where: { id: messageId, workspaceId },
       select: { userId: true },
     });
-    if (!message || message.userId === reactorId) return; // Don't notify yourself
+    if (!message || message.userId === reactorId) return;
 
     const notification = await prisma.notification.create({
       data: {

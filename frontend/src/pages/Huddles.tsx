@@ -10,12 +10,6 @@ const Huddles = () => {
   const { isInHuddle, roomId, joinHuddle, leaveHuddle } = useCall();
   const [openId, setOpenId] = useState<string | null>(null);
 
-  /**
-   * Live huddle occupancy derived from presence. A track is "active" iff at
-   * least one user currently has `inHuddleTrackId` pointing at it. This is
-   * driven by the server (see `presenceStore.setInHuddle`), so every signed-in
-   * admin/member sees the same picture in real time.
-   */
   const participantsByTrack = useMemo(() => {
     const map: Record<string, string[]> = {};
     const entries = Object.entries(presence) as Array<

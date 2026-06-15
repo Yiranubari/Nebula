@@ -47,7 +47,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const modalRef = useRef<HTMLDivElement | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Accessibility: lock scroll and handle Escape when modal is open
   useEffect(() => {
     if (!confirmLogout) return;
     const onKey = (e: KeyboardEvent) => {
@@ -57,7 +56,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", onKey);
     setTimeout(() => modalRef.current?.focus(), 0);
-    // Trigger animation after mount
     setTimeout(() => setModalVisible(true), 0);
     return () => {
       document.removeEventListener("keydown", onKey);
@@ -68,7 +66,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const closeModal = (after?: () => void) => {
     setModalVisible(false);
-    // Wait for animation to finish
     setTimeout(() => {
       setConfirmLogout(false);
       after?.();
@@ -80,9 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const notifCount = notifications.filter(
     (n) =>
       !n.read &&
-      // Count any notification directly addressed to this user
       (n.recipientId === currentUser.id ||
-        // Admins also see pending approvals count
         (currentUser.role === "ADMIN" && n.status === "PENDING"))
   ).length;
 
@@ -134,7 +129,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: PhoneCall,
       label: "Huddles",
       path: "/huddles",
-      // Count of distinct tracks with at least one user currently in a huddle.
       badge: new Set(
         (Object.values(presence) as Array<{ inHuddleTrackId?: string | null }>)
           .map((p) => p?.inHuddleTrackId)

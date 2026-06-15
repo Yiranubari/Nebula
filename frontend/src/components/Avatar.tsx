@@ -41,7 +41,6 @@ function Avatar({
   const showImg = !!src && !broken;
   const label = alt || name || "Avatar";
 
-  // Reset broken state when the image source changes
   useEffect(() => {
     setBroken(false);
   }, [src]);
@@ -53,7 +52,7 @@ function Avatar({
       ? "bg-amber-400"
       : status === "in-huddle"
       ? "bg-violet-500"
-      : "bg-slate-400"; // offline/default
+      : "bg-slate-400";
 
   return (
     <span className="inline-block relative align-middle">

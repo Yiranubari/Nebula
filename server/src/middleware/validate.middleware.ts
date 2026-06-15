@@ -10,11 +10,6 @@ export function validate(schema: ZodSchema, target: ValidationTarget = "body") {
       next(result.error);
       return;
     }
-    // Express 5 makes `req.query` and `req.params` getter-only — direct
-    // assignment throws `Cannot set property of IncomingMessage which has
-    // only a getter`. `Object.defineProperty` replaces the accessor with a
-    // plain data property so controllers still read the parsed (and
-    // possibly transformed, e.g. `limit` coerced to Number) values.
     Object.defineProperty(req, target, {
       value: result.data,
       writable: true,

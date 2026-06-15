@@ -1,19 +1,9 @@
-/**
- * Integration tests for the Auth routes.
- * These tests hit real API routes against an in-memory or test DB.
- *
- * Run with: npm run test:integration
- *
- * NOTE: These tests are intentionally structured as living documentation of the
- * expected API contract. They will skip gracefully if TEST_DATABASE_URL is not set.
- */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import { getApp, cleanupDb } from "./helpers";
 import type { Express } from "express";
 
-// ── Guard: skip if no test DB is configured ────────────────────────────────
 const SKIP = !process.env.TEST_DATABASE_URL;
 
 describe.skipIf(SKIP)("Auth Routes — Integration", () => {
@@ -30,13 +20,10 @@ describe.skipIf(SKIP)("Auth Routes — Integration", () => {
   });
 
   afterAll(async () => {
-    // Clean up the user created during tests
     await prisma.refreshToken.deleteMany({ where: { user: { email: testEmail } } });
     await prisma.user.deleteMany({ where: { email: testEmail } });
     await prisma.$disconnect();
   });
-
-  // ── Registration ──────────────────────────────────────────────────────────
 
   describe("POST /api/auth/register", () => {
     it("returns 201 and a success message", async () => {
@@ -66,8 +53,6 @@ describe.skipIf(SKIP)("Auth Routes — Integration", () => {
     });
   });
 
-  // ── Login (before OTP verification) ───────────────────────────────────────
-
   describe("POST /api/auth/login", () => {
     it("returns 403 if user is not verified", async () => {
       const res = await request(app)
@@ -87,8 +72,6 @@ describe.skipIf(SKIP)("Auth Routes — Integration", () => {
     });
   });
 
-  // ── OTP verification ───────────────────────────────────────────────────────
-
   describe("POST /api/auth/verify-otp", () => {
     it("returns 400 for an invalid OTP", async () => {
       const res = await request(app)
@@ -99,8 +82,6 @@ describe.skipIf(SKIP)("Auth Routes — Integration", () => {
       expect(res.body.message).toMatch(/invalid|expired/i);
     });
   });
-
-  // ── Resend OTP ────────────────────────────────────────────────────────────
 
   describe("POST /api/auth/resend-otp", () => {
     it("returns 200 and sends a new OTP", async () => {

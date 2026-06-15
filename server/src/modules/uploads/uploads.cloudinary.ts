@@ -9,7 +9,6 @@ cloudinary.config({
 
 const defaultFolder = `nebula-${env.NODE_ENV}`;
 
-/** Upload a buffer from multer's memory storage to Cloudinary */
 export const uploadToCloudinary = (
   buffer: Buffer,
   mimetype: string,

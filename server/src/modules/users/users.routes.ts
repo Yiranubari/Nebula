@@ -12,7 +12,6 @@ const router = Router();
 const usersService = new UsersService(prisma);
 const usersController = new UsersController(usersService);
 
-// Require authentication for all user routes
 router.use(protect);
 
 router.get("/me", asyncHandler(usersController.getMe));

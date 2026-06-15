@@ -1,13 +1,3 @@
-/**
- * Branded HTML email templates in a minimal, Resend-style aesthetic:
- * full-bleed dark background, generous whitespace, a single large heading,
- * short copy, and one clear call-to-action.
- *
- * Uses:
- *   - Inline styles (Outlook and other stricter clients strip <style>).
- *   - Table-based outer layout for Outlook desktop compatibility.
- *   - Logo via `cid:` so it renders inline in every mainstream client.
- */
 
 export interface EmailContent {
   subject: string;
@@ -15,13 +5,11 @@ export interface EmailContent {
   html: string;
 }
 
-// ─── Design tokens ──────────────────────────────────────────────────────────
-
-const BG = "#0b1120"; // full-bleed page background
-const TEXT = "#cbd5e1"; // body copy (slate-300)
-const MUTED = "#64748b"; // footer copy (slate-500)
+const BG = "#0b1120";
+const TEXT = "#cbd5e1";
+const MUTED = "#64748b";
 const HEADING = "#ffffff";
-const ACCENT_BG = "#ffffff"; // pill button
+const ACCENT_BG = "#ffffff";
 const ACCENT_TEXT = "#0b1120";
 const CODE_BG = "rgba(255,255,255,0.04)";
 
@@ -30,14 +18,12 @@ const FONT =
 
 const LOGO_CID = "nebula-logo";
 
-// ─── Shared layout ──────────────────────────────────────────────────────────
-
 interface LayoutArgs {
-  preview: string; // hidden inbox preview snippet
-  title: string; // single large centered heading
-  intro: string; // short paragraph under the title
-  bodyHtml: string; // the CTA block — usually a button or an OTP code
-  footerNote?: string; // optional small note below the CTA
+  preview: string;
+  title: string;
+  intro: string;
+  bodyHtml: string;
+  footerNote?: string;
 }
 
 function layout({ preview, title, intro, bodyHtml, footerNote }: LayoutArgs): string {
@@ -135,8 +121,6 @@ function layout({ preview, title, intro, bodyHtml, footerNote }: LayoutArgs): st
 </html>`;
 }
 
-// ─── Shared CTA pieces ──────────────────────────────────────────────────────
-
 function otpCodeBlock(otp: string, minutes = 15): string {
   const spaced = otp.split("").join(" ");
   return `
@@ -184,8 +168,6 @@ function pillButton(href: string, label: string): string {
     </table>
   `;
 }
-
-// ─── Templates ──────────────────────────────────────────────────────────────
 
 export function verifyOtpEmail(otp: string): EmailContent {
   const subject = "Verify your Nebula account";

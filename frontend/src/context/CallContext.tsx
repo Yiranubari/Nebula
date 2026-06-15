@@ -1,20 +1,3 @@
-/**
- * CallContext — manages huddle (audio) calls using:
- *   • Socket.IO for signaling  (via SocketContext)
- *   • simple-peer for WebRTC P2P audio streams
- *
- * Architecture:
- *   When a user joins a room the server emits `huddle:state` with existing
- *   participants. This client creates an *initiating* Peer for each of them,
- *   sending an SDP offer via `huddle:offer`. Each recipient's client receives
- *   `huddle:offer`, creates a *non-initiating* Peer, and replies with
- *   `huddle:answer`. ICE candidates are relayed the same way.
- *
- *   When `huddle:user-joined` fires for a *new* joiner (after we're already in
- *   the room) the room awaits the new peer's offer — we do NOT initiate to
- *   avoid offer collisions. The server notifies the new joiner of existing
- *   participants via `huddle:state`, and the existing peers each send offers.
- */
 
 import React, {
   createContext,
@@ -27,8 +10,6 @@ import SimplePeer from "simple-peer";
 import toast from "react-hot-toast";
 import { useApp } from "./AppContext";
 import { useSocket } from "./SocketContext";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 export type CallParticipant = {
   id: string;
@@ -49,19 +30,13 @@ export type CallState = {
   inputDeviceId?: string;
   outputDevices: MediaDeviceInfo[];
   outputDeviceId?: string;
-  /** Our local screen-share stream, if we're currently sharing. */
   localScreenStream: MediaStream | null;
-  /** A remote participant's screen stream, keyed by their userId. */
   remoteScreenStreams: Record<string, MediaStream>;
-  /** true iff *any* participant (us or remote) is sharing. */
   isScreenSharing: boolean;
-  /** userId of whoever we're currently displaying a screen share from. */
   activeScreenSharerId: string | null;
   handRaised: boolean;
-  /** Our local camera stream, if our webcam is on. */
   localCameraStream: MediaStream | null;
   cameraOn: boolean;
-  /** Remote participants' camera streams, keyed by userId. */
   remoteCameraStreams: Record<string, MediaStream>;
 };
 
@@ -71,14 +46,11 @@ type CallContextType = CallState & {
   toggleMute: () => void;
   setInputDeviceId: (deviceId: string) => Promise<void>;
   toggleHand: () => void;
-  /** @deprecated alias of toggleHand, kept for back-compat */
   raiseHand: () => void;
   setOutputDeviceId: (deviceId: string) => Promise<void>;
   toggleScreenShare: () => Promise<void>;
   toggleCamera: () => Promise<void>;
 };
-
-// ─── Internal peer record ─────────────────────────────────────────────────────
 
 type PeerEntry = {
   userId: string;
@@ -86,11 +58,7 @@ type PeerEntry = {
   audioEl: HTMLAudioElement;
 };
 
-// ─── Context ──────────────────────────────────────────────────────────────────
-
 const CallContext = createContext<CallContextType | null>(null);
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const CallProvider = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, users, setUserPresence } = useApp();
@@ -115,7 +83,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     remoteCameraStreams: {},
   });
 
-  // Stable refs so socket event handlers don't stale-close over state
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
@@ -125,15 +92,10 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
   const localAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // ─── Lifecycle: hidden audio element + AudioContext ────────────────────────
-
   useEffect(() => {
     const el = document.createElement("audio");
     el.style.display = "none";
     el.autoplay = true;
-    // Muted ALWAYS — this element exists only so the browser keeps the
-    // local stream "hot" and so `setSinkId` has something to bind to.
-    // If we let it play, the user hears their own mic in real time (echo).
     el.muted = true;
     document.body.appendChild(el);
     localAudioRef.current = el;
@@ -154,8 +116,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  // ─── Helper: device enumeration ───────────────────────────────────────────
-
   const enumerateDevices = async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -166,8 +126,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       }));
     } catch {}
   };
-
-  // ─── Helper: join chime ───────────────────────────────────────────────────
 
   const playJoinChime = () => {
     try {
@@ -187,8 +145,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     } catch {}
   };
 
-  // ─── Helper: destroy a single peer ────────────────────────────────────────
-
   const destroyPeer = (userId: string) => {
     const entry = peersRef.current.get(userId);
     if (!entry) return;
@@ -197,20 +153,15 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     peersRef.current.delete(userId);
   };
 
-  // ─── Helper: destroy all peers ────────────────────────────────────────────
-
   const destroyAllPeers = () => {
     for (const userId of peersRef.current.keys()) destroyPeer(userId);
   };
-
-  // ─── Helper: create a peer and wire it up ─────────────────────────────────
 
   const createPeer = (
     remoteUserId: string,
     localStream: MediaStream,
     initiator: boolean
   ): SimplePeer.Instance => {
-    // Destroy stale peer if it exists
     destroyPeer(remoteUserId);
 
     const peer = new SimplePeer({
@@ -225,13 +176,11 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       },
     });
 
-    // Create audio element for remote stream
     const audioEl = document.createElement("audio");
     audioEl.autoplay = true;
     audioEl.style.display = "none";
     document.body.appendChild(audioEl);
 
-    // Apply output device if already selected
     const outputDeviceId = stateRef.current.outputDeviceId;
     if (outputDeviceId && typeof (audioEl as any).setSinkId === "function") {
       (audioEl as any).setSinkId(outputDeviceId).catch(() => {});
@@ -239,7 +188,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
 
     peersRef.current.set(remoteUserId, { userId: remoteUserId, peer, audioEl });
 
-    // When we have a signal (offer / answer / ICE candidate)
     peer.on("signal", (data) => {
       const roomId = stateRef.current.roomId;
       if (!socket || !roomId) return;
@@ -249,16 +197,10 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       } else if (data.type === "answer") {
         socket.emit("huddle:answer", { roomId, toUserId: remoteUserId, sdp: data as RTCSessionDescriptionInit });
       } else {
-        // ICE candidate
         socket.emit("huddle:ice", { roomId, toUserId: remoteUserId, candidate: data as RTCIceCandidateInit });
       }
     });
 
-    // Each `stream` event is either:
-    //   - the remote's original audio-only stream (initial join)
-    //   - a screen share (video track whose getSettings() exposes
-    //     `displaySurface`, which getDisplayMedia always sets)
-    //   - a camera video stream (any other video track)
     peer.on("stream", (remoteStream) => {
       const videoTracks = remoteStream.getVideoTracks();
       if (videoTracks.length === 0) {
@@ -305,7 +247,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         };
         videoTracks.forEach((t) => t.addEventListener("ended", cleanup));
       } else {
-        // Remote camera video
         setState((prev) => ({
           ...prev,
           remoteCameraStreams: {
@@ -335,12 +276,9 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     return peer;
   };
 
-  // ─── Socket.IO signaling event handlers ───────────────────────────────────
-
   useEffect(() => {
     if (!socket) return;
 
-    // Server confirmed room state (on join — create offers to all existing participants)
     const onHuddleState = (payload: { roomId: string; participants: { userId: string; muted: boolean; handRaised: boolean }[] }) => {
       const localStream = stateRef.current.localStream;
       if (!localStream) return;
@@ -349,9 +287,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         (p) => p.userId !== currentUser.id
       );
 
-      // Build participants list, diffing against the previous state so we can
-      // surface Meet-style "X raised their hand" toasts whenever someone
-      // other than us flips their handRaised.
       setState((prev) => {
         const prevById = new Map<string, CallParticipant>(
           prev.participants.map((p) => [p.id, p])
@@ -394,19 +329,16 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         };
       });
 
-      // Initiate connections to existing participants
       for (const remote of remoteUsers) {
-        createPeer(remote.userId, localStream, true /* initiator */);
+        createPeer(remote.userId, localStream, true );
       }
     };
 
-    // A new user joined after us — wait for their offer (they are the initiators)
     const onUserJoined = (payload: { roomId: string; userId: string; participants: { userId: string; muted: boolean; handRaised: boolean }[] }) => {
       if (payload.userId === currentUser.id) return;
       const u = users.find((u) => u.id === payload.userId);
 
       setState((prev) => {
-        // Add them if not already listed
         if (prev.participants.some((p) => p.id === payload.userId)) return prev;
         return {
           ...prev,
@@ -417,11 +349,8 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         };
       });
 
-      // The server will prompt the new user to create offers to each existing participant.
-      // We do NOT initiate here — we simply prepare a non-initiating peer lazily in onOffer.
     };
 
-    // A user left
     const onUserLeft = (payload: { roomId: string; userId: string; participants: { userId: string }[] }) => {
       if (payload.userId === currentUser.id) return;
       destroyPeer(payload.userId);
@@ -431,22 +360,19 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       }));
     };
 
-    // Incoming SDP offer from a remote peer
     const onOffer = ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
       const localStream = stateRef.current.localStream;
       if (!localStream) return;
 
-      const peer = createPeer(fromUserId, localStream, false /* not initiator */);
+      const peer = createPeer(fromUserId, localStream, false );
       peer.signal(sdp);
     };
 
-    // Incoming SDP answer
     const onAnswer = ({ fromUserId, sdp }: { fromUserId: string; sdp: RTCSessionDescriptionInit }) => {
       const entry = peersRef.current.get(fromUserId);
       if (entry) entry.peer.signal(sdp);
     };
 
-    // Incoming ICE candidate
     const onIce = ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
       const entry = peersRef.current.get(fromUserId);
       if (entry) entry.peer.signal(candidate);
@@ -467,11 +393,7 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       socket.off("huddle:answer", onAnswer);
       socket.off("huddle:ice", onIce);
     };
-    // Re-register whenever socket identity changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, currentUser.id]);
-
-  // ─── Public API: joinHuddle ───────────────────────────────────────────────
 
   const joinHuddle = async (roomId: string) => {
     if (stateRef.current.isInHuddle && stateRef.current.roomId === roomId) return;
@@ -503,13 +425,11 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         activeRooms: Array.from(new Set([...prev.activeRooms, roomId])),
       }));
 
-      // Update presence
       setUserPresence(currentUser.id, "online", { inHuddleTrackId: roomId });
 
       playJoinChime();
       await enumerateDevices();
 
-      // Tell the server we're joining
       socket?.emit("huddle:join", { roomId });
     } catch (err) {
       console.error("[Huddle] Failed to access microphone:", err);
@@ -517,24 +437,18 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ─── Public API: leaveHuddle ──────────────────────────────────────────────
-
   const leaveHuddle = () => {
     const { roomId, localStream, localScreenStream, localCameraStream } =
       stateRef.current;
 
-    // Notify server
     if (roomId) socket?.emit("huddle:leave", { roomId });
 
-    // Stop local tracks (mic + screen + camera)
     localStream?.getTracks().forEach((t) => t.stop());
     localScreenStream?.getTracks().forEach((t) => t.stop());
     localCameraStream?.getTracks().forEach((t) => t.stop());
 
-    // Destroy all peer connections
     destroyAllPeers();
 
-    // Update presence
     setUserPresence(currentUser.id, "online", { inHuddleTrackId: null });
 
     setState((prev) => ({
@@ -556,17 +470,13 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     }));
   };
 
-  // ─── Public API: toggleMute ───────────────────────────────────────────────
-
   const toggleMute = () => {
     const mutedNext = !stateRef.current.muted;
 
-    // Toggle local audio tracks
     stateRef.current.localStream
       ?.getAudioTracks()
       .forEach((t) => (t.enabled = !mutedNext));
 
-    // Tell server so other participants' UIs update
     if (stateRef.current.roomId) {
       socket?.emit("huddle:mute", { roomId: stateRef.current.roomId, muted: mutedNext });
     }
@@ -579,8 +489,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       ),
     }));
   };
-
-  // ─── Public API: toggleHand ───────────────────────────────────────────────
 
   const toggleHand = () => {
     const { roomId, participants } = stateRef.current;
@@ -597,15 +505,11 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       ),
     }));
   };
-  // Back-compat alias.
   const raiseHand = toggleHand;
-
-  // ─── Public API: toggleScreenShare ────────────────────────────────────────
 
   const toggleScreenShare = async () => {
     const { localScreenStream } = stateRef.current;
 
-    // Stop sharing
     if (localScreenStream) {
       localScreenStream.getTracks().forEach((t) => t.stop());
       for (const { peer } of peersRef.current.values()) {
@@ -628,9 +532,7 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Start sharing
     try {
-      // Some older TS DOM libs don't know about getDisplayMedia — cast via any.
       const stream: MediaStream = await (navigator.mediaDevices as any).getDisplayMedia(
         { video: { cursor: "always" }, audio: false }
       );
@@ -643,11 +545,8 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // The browser's "Stop sharing" control ends the track; listen for that
-      // so our state mirrors reality.
       stream.getVideoTracks().forEach((t) => {
         t.addEventListener("ended", () => {
-          // Re-enter to flip state + notify peers.
           toggleScreenShare();
         });
       });
@@ -659,17 +558,13 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         activeScreenSharerId: prev.activeScreenSharerId ?? currentUser.id,
       }));
     } catch (err) {
-      // Typical cause: user dismissed the picker. Silent is fine.
       console.warn("[Huddle] screen share aborted:", err);
     }
   };
 
-  // ─── Public API: toggleCamera ─────────────────────────────────────────────
-
   const toggleCamera = async () => {
     const { localCameraStream } = stateRef.current;
 
-    // Turn off
     if (localCameraStream) {
       localCameraStream.getTracks().forEach((t) => t.stop());
       for (const { peer } of peersRef.current.values()) {
@@ -685,7 +580,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Turn on
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -704,7 +598,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Clean up if the user kills the track from browser UI / unplugs the cam.
       stream.getVideoTracks().forEach((t) => {
         t.addEventListener("ended", () => {
           setState((prev) => ({
@@ -725,8 +618,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ─── Public API: setInputDeviceId ─────────────────────────────────────────
-
   const setInputDeviceId = async (deviceId: string) => {
     setState((prev) => ({ ...prev, inputDeviceId: deviceId }));
     if (!stateRef.current.isInHuddle) return;
@@ -736,12 +627,10 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         audio: deviceId ? { deviceId: { exact: deviceId } } : true,
       });
 
-      // Stop old tracks
       stateRef.current.localStream?.getTracks().forEach((t) => t.stop());
 
       if (localAudioRef.current) localAudioRef.current.srcObject = newStream;
 
-      // Replace track on every peer connection
       for (const { peer } of peersRef.current.values()) {
         const [newTrack] = newStream.getAudioTracks();
         if (newTrack && (peer as any)._pc) {
@@ -757,12 +646,9 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ─── Public API: setOutputDeviceId ────────────────────────────────────────
-
   const setOutputDeviceId = async (deviceId: string) => {
     setState((prev) => ({ ...prev, outputDeviceId: deviceId }));
 
-    // Apply to local monitoring element
     try {
       const el = localAudioRef.current as any;
       if (el && typeof el.setSinkId === "function") {
@@ -770,7 +656,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       }
     } catch {}
 
-    // Apply to all remote audio elements
     for (const { audioEl } of peersRef.current.values()) {
       try {
         if (typeof (audioEl as any).setSinkId === "function") {
@@ -779,8 +664,6 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       } catch {}
     }
   };
-
-  // ─── Value ────────────────────────────────────────────────────────────────
 
   const value: CallContextType = {
     ...state,

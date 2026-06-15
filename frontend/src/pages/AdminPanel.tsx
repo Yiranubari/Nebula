@@ -41,7 +41,6 @@ const AdminPanel = () => {
   } | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
-  // Invite form
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteError, setInviteError] = useState("");
   const [isInviting, setIsInviting] = useState(false);
@@ -59,7 +58,6 @@ const AdminPanel = () => {
   const isValidEmail = (s: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
-  // Protect Route
   if (currentUser.role !== "ADMIN") {
     return (
       <div className="p-10 text-center">
@@ -73,7 +71,6 @@ const AdminPanel = () => {
 
   const handleCreateTask = async () => {
     setError("");
-    // Basic validations
     if (!title.trim()) return setError("Please enter a task title.");
     if (!description.trim())
       return setError("Please enter a task description.");
@@ -96,7 +93,6 @@ const AdminPanel = () => {
       });
       navigate("/tasks");
     } catch {
-      // API interceptor shows the server's error.
     } finally {
       setIsCreatingTask(false);
     }
@@ -114,7 +110,6 @@ const AdminPanel = () => {
       await inviteMember(inviteEmail.trim());
       setInviteEmail("");
     } catch {
-      // Interceptor surfaces the server error.
     } finally {
       setIsInviting(false);
     }
@@ -126,7 +121,6 @@ const AdminPanel = () => {
     try {
       await inviteMember(email);
     } catch {
-      // Interceptor surfaces the server error.
     } finally {
       setResendingId(null);
     }
@@ -148,7 +142,6 @@ const AdminPanel = () => {
         </div>
       </div>
 
-      {/* Team Members */}
       <div className="mt-8 glass-panel p-6 rounded-2xl shadow-sm">
         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
           Team Members
@@ -217,7 +210,6 @@ const AdminPanel = () => {
         </div>
       </div>
 
-      {/* Invite a member */}
       <div className="mt-8 glass-panel p-6 rounded-2xl shadow-sm">
         <div className="flex items-start gap-3 mb-4">
           <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500 dark:text-indigo-300 border border-indigo-500/20">
@@ -266,7 +258,6 @@ const AdminPanel = () => {
         )}
       </div>
 
-      {/* Pending Invites */}
       {pendingInvites.length > 0 && (
         <div className="mt-8 glass-panel p-6 rounded-2xl shadow-sm">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
@@ -324,7 +315,6 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* Manual Task Creation */}
       <div className="mt-8 glass-panel p-6 rounded-2xl shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col">
@@ -462,7 +452,6 @@ const AdminPanel = () => {
                   try {
                     await removeUser(id);
                   } catch {
-                    // API interceptor shows the error toast.
                   } finally {
                     setDeletingUserId(null);
                   }
@@ -535,7 +524,6 @@ const AdminPanel = () => {
                           await updateUserRole(change.userId, change.to);
                           setConfirmRoleChange(null);
                         } catch {
-                          // API interceptor shows the error toast.
                         } finally {
                           setIsUpdatingRole(false);
                         }

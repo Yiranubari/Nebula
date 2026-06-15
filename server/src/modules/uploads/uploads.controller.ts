@@ -3,7 +3,6 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { uploadToCloudinary } from "./uploads.cloudinary";
 
-/** POST /api/uploads  (multipart/form-data, field name: "file") */
 export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
   if (!req.file) {
     throw new AppError(400, "No file provided");

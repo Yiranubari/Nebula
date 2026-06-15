@@ -5,21 +5,15 @@ const prisma = new PrismaClient();
 
 const SALT_ROUNDS = 12;
 
-/**
- * Seed a single demo workspace with an admin + four members, two tracks,
- * and a bunch of tasks. Useful for local manual QA; never run in production.
- */
 async function main() {
   const passwordHash = await bcrypt.hash("password123", SALT_ROUNDS);
 
-  // Workspace + admin come first since everything else FKs into the workspace.
   const workspace = await prisma.workspace.upsert({
     where: { slug: "nebula-demo" },
     update: {},
     create: {
       name: "Nebula Demo",
       slug: "nebula-demo",
-      // ownerId backfilled after admin is created (see update below).
       ownerId: "__placeholder__",
     },
   });
@@ -38,7 +32,6 @@ async function main() {
     },
   });
 
-  // Fix the placeholder owner now that admin exists.
   await prisma.workspace.update({
     where: { id: workspace.id },
     data: { ownerId: admin.id },

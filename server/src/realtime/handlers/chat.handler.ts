@@ -17,11 +17,6 @@ const emitError = (socket: NebSocket, message: string) => {
   socket.emit("error" as any, { message });
 };
 
-/**
- * True if the user can interact with this track. Admins always pass — they
- * can send, react, pin, and read-mark messages in any workspace channel
- * without explicit membership.
- */
 const canAccessTrack = async (
   trackId: string,
   userId: string,
@@ -34,7 +29,6 @@ const canAccessTrack = async (
   return !!member;
 };
 
-/** Require that the track exists and belongs to the caller's workspace. */
 const trackInWorkspace = async (trackId: string, workspaceId: string) => {
   const track = await prisma.track.findFirst({
     where: { id: trackId, workspaceId },
@@ -46,10 +40,8 @@ const trackInWorkspace = async (trackId: string, workspaceId: string) => {
 export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
   const { userId, role, workspaceId } = socket.data;
 
-  // ─── Send message ────────────────────────────────────────────────────────────
   socket.on("message:send", async (payload) => {
     try {
-      // Rate limit: burst 10, ~2 msgs/sec sustained
       if (!consume(socket.id, "message:send", { capacity: 10, ratePerSec: 2 })) {
         emitError(socket, "You're sending messages too quickly. Slow down.");
         return;
@@ -72,9 +64,6 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
         return;
       }
 
-      // Lazy-join the track's socket room. Tracks created/joined AFTER the
-      // socket connected aren't in `socket.rooms` from the initial handshake,
-      // so the sender would otherwise miss their own `message:new` echo.
       if (!socket.rooms.has(`track:${trackId}`)) {
         socket.join(`track:${trackId}`);
       }
@@ -94,7 +83,6 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
         },
       });
 
-      // Broadcast to all users in this track room
       getIO().to(`track:${trackId}`).emit("message:new", message as any);
     } catch (err) {
       logger.error({ err }, "chat:send error");
@@ -102,7 +90,6 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
     }
   });
 
-  // ─── React to message ────────────────────────────────────────────────────────
   socket.on("message:react", async ({ messageId, emoji }) => {
     try {
       if (!messageId || !emoji) return;
@@ -119,7 +106,6 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
       const reactions = (message.reactions as Record<string, string[]>) ?? {};
       const existing = reactions[emoji] ?? [];
 
-      // Toggle reaction
       if (existing.includes(userId)) {
         reactions[emoji] = existing.filter((id) => id !== userId);
         if (reactions[emoji].length === 0) delete reactions[emoji];
@@ -141,7 +127,6 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
     }
   });
 
-  // ─── Mark message as read ────────────────────────────────────────────────────
   socket.on("message:read", async ({ messageId }) => {
     try {
       if (!messageId) return;
@@ -170,7 +155,6 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
     }
   });
 
-  // ─── Pin / unpin message ─────────────────────────────────────────────────────
   socket.on("message:pin", async ({ messageId, pinned }) => {
     try {
       if (!messageId) return;
@@ -184,7 +168,6 @@ export const registerChatHandlers = (_io: NebServer, socket: NebSocket) => {
         return;
       }
 
-      // Only the author or an admin can pin/unpin
       if (role !== "ADMIN" && message.userId !== userId) {
         emitError(socket, "Only admins or the author can pin this message");
         return;

@@ -22,17 +22,14 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-slate-900 selection:bg-indigo-500/30 text-white font-sans">
-      {/* Background gradients and blurs */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/30 blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[150px]" />
         <div className="absolute top-[40%] left-[60%] w-[30%] h-[30%] rounded-full bg-pink-500/10 blur-[100px]" />
-        
-        {/* Animated grid */}
+
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
       </div>
 
-      {/* Header */}
       <header className="relative z-10 container mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-2 group">
           <img
@@ -61,7 +58,6 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
       <main className="relative z-10 flex flex-col items-center justify-center pt-24 pb-32 px-6 text-center">
         <div className={`transition-all duration-1000 ease-out flex flex-col items-center ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-white/90 to-white/60 max-w-4xl leading-[1.1] mb-6">
@@ -91,18 +87,15 @@ const Landing = () => {
           </div>
         </div>
 
-        {/* Dashboard Preview Mockup */}
         <div className={`mt-24 relative w-full max-w-5xl transition-all duration-1000 delay-300 ease-out ${mounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-16 scale-95"}`}>
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10 pointer-events-none" />
           <div className="relative rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden shadow-indigo-500/20">
-            {/* Mac OS Controls */}
             <div className="absolute top-0 left-0 w-full h-12 bg-slate-800/50 border-b border-white/5 flex items-center px-4 gap-2 z-20">
               <div className="w-3 h-3 rounded-full bg-rose-500/80" />
               <div className="w-3 h-3 rounded-full bg-amber-500/80" />
               <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
             </div>
-            
-            {/* Mockup content */}
+
             <div className="pt-12 flex h-[400px]">
               <div className="w-48 border-r border-white/5 p-4 flex flex-col gap-3 opacity-70">
                 <div className="h-4 w-24 bg-white/10 rounded mb-4" />
@@ -118,7 +111,7 @@ const Landing = () => {
                     <div className="w-8 h-8 rounded-full bg-white/10" />
                   </div>
                 </div>
-                
+
                 <div className="flex gap-4 h-full">
                   {[1, 2, 3].map(i => (
                     <div key={i} className="flex-1 bg-white/5 rounded-xl p-3 flex flex-col gap-3">
@@ -140,7 +133,7 @@ const Landing = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="absolute bottom-6 right-6 w-64 h-72 bg-slate-800/90 rounded-xl border border-white/10 shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl">
                   <div className="p-3 border-b border-white/5 flex items-center gap-2">
                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -154,14 +147,13 @@ const Landing = () => {
                      <div className="h-8 w-full bg-white/5 rounded-full" />
                   </div>
                 </div>
-                
+
               </div>
             </div>
           </div>
         </div>
       </main>
 
-      {/* Feature Grid */}
       <section id="features" className="relative z-10 py-24 px-6 max-w-6xl mx-auto border-t border-white/5">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-4">
@@ -195,13 +187,12 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="relative z-10 py-24 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-indigo-900/20" />
         <div className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/10 p-10 md:p-16 text-center relative overflow-hidden backdrop-blur-md">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/30 rounded-full blur-[80px]" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/30 rounded-full blur-[80px]" />
-          
+
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 relative z-10">
             Ready to accelerate your team?
           </h2>
@@ -220,7 +211,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="relative z-10 border-t border-white/5 py-12 px-6 bg-slate-950">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">

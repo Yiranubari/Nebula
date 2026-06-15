@@ -25,7 +25,6 @@ const Signup = () => {
   const [workspaceName, setWorkspaceName] = useState("");
   const [isSigningUp, setIsSigningUp] = useState(false);
 
-  // Invite-mode only: OTP digits for the email verification code.
   const [otpDigits, setOtpDigits] = useState<string[]>(() =>
     Array.from({ length: 6 }, () => "")
   );

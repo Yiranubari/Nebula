@@ -9,12 +9,6 @@ declare global {
   }
 }
 
-/**
- * Attach a stable request ID on every inbound request. Honours an incoming
- * `X-Request-Id` header when present (for trace propagation), and mirrors the
- * final value back on the response so clients can quote it when reporting
- * failures.
- */
 export function requestId(req: Request, res: Response, next: NextFunction) {
   const incoming = req.headers["x-request-id"];
   const id =
