@@ -191,24 +191,18 @@ export default function HuddleCall({
           <div className="h-full flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1 rounded-2xl overflow-hidden bg-black border border-white/5">
               {iAmSharing ? (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-900 to-slate-950 px-6 text-center">
-                  <div className="w-16 h-16 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center">
-                    <ScreenShare size={28} className="text-indigo-300" />
+                <div className="w-full h-full flex flex-col items-center justify-center gap-5 bg-[#202124] px-6 text-center">
+                  <div className="w-20 h-20 rounded-full bg-white/[0.06] flex items-center justify-center">
+                    <ScreenShare size={36} className="text-slate-200" />
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-base font-semibold text-white">
-                      You're presenting your screen
-                    </p>
-                    <p className="text-sm text-slate-400 max-w-sm">
-                      Everyone else in the call can see it. We hide the
-                      preview on your end to avoid the mirror effect.
-                    </p>
-                  </div>
+                  <p className="text-lg font-medium text-white">
+                    You're presenting to everyone
+                  </p>
                   <button
                     onClick={() => void toggleScreenShare()}
-                    className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium shadow"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium shadow"
                   >
-                    <ScreenShareOff size={14} />
+                    <ScreenShareOff size={16} />
                     Stop presenting
                   </button>
                 </div>
