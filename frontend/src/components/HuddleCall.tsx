@@ -152,14 +152,6 @@ export default function HuddleCall({
               #{trackName}
             </h3>
             <div className="flex items-center gap-3 text-[11px] text-slate-400">
-              <span className="inline-flex items-center gap-1">
-                <span className="relative inline-flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                </span>
-                Live
-              </span>
-              <span>·</span>
               <span className="tabular-nums">{elapsed}</span>
               <span>·</span>
               <span className="inline-flex items-center gap-1">
