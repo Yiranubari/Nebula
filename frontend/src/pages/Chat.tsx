@@ -838,7 +838,7 @@ const Chat = () => {
             </div>
           );
         })()}
-      <div className="h-16 flex items-center justify-between px-6 bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl shrink-0 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+      <div className="relative z-30 h-16 flex items-center justify-between px-6 bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl shrink-0 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03)]">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-indigo-500/10 text-indigo-600 dark:text-indigo-200 border border-indigo-500/20 rounded-xl flex items-center justify-center shadow-sm">
             <Hash size={20} />
