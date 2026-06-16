@@ -103,7 +103,7 @@ const Profile = () => {
   return (
     <div className="p-6 md:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
+        <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <UserCircle size={24} />
         </div>
         <div>

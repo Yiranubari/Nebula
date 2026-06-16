@@ -23,9 +23,7 @@ const Landing = () => {
   return (
     <div className="min-h-screen relative overflow-hidden bg-slate-900 selection:bg-indigo-500/30 text-white font-sans">
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/30 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[150px]" />
-        <div className="absolute top-[40%] left-[60%] w-[30%] h-[30%] rounded-full bg-pink-500/10 blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/15 blur-[120px]" />
 
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
       </div>
@@ -37,7 +35,7 @@ const Landing = () => {
             alt="Nebula"
             className="w-10 h-10 drop-shadow-[0_0_14px_rgba(168,85,247,0.5)] group-hover:scale-105 transition-transform duration-300"
           />
-          <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">Nebula</span>
+          <span className="text-xl font-bold tracking-tight text-white">Nebula</span>
         </div>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
@@ -60,8 +58,8 @@ const Landing = () => {
 
       <main className="relative z-10 flex flex-col items-center justify-center pt-24 pb-32 px-6 text-center">
         <div className={`transition-all duration-1000 ease-out flex flex-col items-center ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-white/90 to-white/60 max-w-4xl leading-[1.1] mb-6">
-            The workspace for <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">visionary teams</span>
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white max-w-4xl leading-[1.1] mb-6">
+            The workspace for <br/> <span className="text-indigo-400">modern teams</span>
           </h1>
 
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl mb-10 leading-relaxed font-light">
@@ -72,7 +70,7 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <Link
               to="/signup"
-              className="group relative px-8 py-4 bg-white text-slate-900 rounded-full font-bold shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_rgba(255,255,255,0.5)] transition-all flex items-center gap-2 hover:scale-105 active:scale-95"
+              className="group relative px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold shadow-lg transition-all flex items-center gap-2 hover:scale-105 active:scale-95"
             >
               Create your workspace
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
@@ -156,7 +154,7 @@ const Landing = () => {
 
       <section id="features" className="relative z-10 py-24 px-6 max-w-6xl mx-auto border-t border-white/5">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Everything you need. Nothing you don't.
           </h2>
           <p className="text-slate-400 font-light max-w-2xl mx-auto">
@@ -188,11 +186,7 @@ const Landing = () => {
       </section>
 
       <section className="relative z-10 py-24 px-6 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-indigo-900/20" />
-        <div className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/10 p-10 md:p-16 text-center relative overflow-hidden backdrop-blur-md">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/30 rounded-full blur-[80px]" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/30 rounded-full blur-[80px]" />
-
+        <div className="max-w-4xl mx-auto rounded-3xl bg-white/[0.03] border border-white/10 p-10 md:p-16 text-center relative overflow-hidden">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 relative z-10">
             Ready to accelerate your team?
           </h2>
@@ -203,7 +197,7 @@ const Landing = () => {
           <div className="flex justify-center relative z-10">
             <Link
               to="/signup"
-              className="px-8 py-4 bg-white text-slate-900 rounded-full font-bold shadow-xl hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all hover:scale-105 active:scale-95"
+              className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
             >
               Create your workspace
             </Link>

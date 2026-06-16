@@ -364,7 +364,7 @@ const Inbox: React.FC = () => {
   return (
     <div className="p-4 md:p-6 h-full">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
+        <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <InboxIcon size={20} />
         </div>
         <div>

@@ -56,30 +56,15 @@
         background-color: #f8fafc;
       }
 
-      /* Utility: gradient brand text */
+      /* Utility: solid brand text (plain, theme-aware) */
       .text-brand {
-        background-image: linear-gradient(
-          90deg,
-          #ffffff 0%,
-          rgba(255, 255, 255, 0.6) 100%
-        );
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        color: #f8fafc;
       }
       html:not(.dark) .text-brand {
-        background-image: linear-gradient(90deg, #0f172a 0%, #475569 100%);
+        color: #0f172a;
       }
       .text-brand-accent {
-        background-image: linear-gradient(
-          90deg,
-          #6366f1 0%,
-          #a855f7 50%,
-          #ec4899 100%
-        );
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        color: #6366f1;
       }
 
       /* Glass panel surfaces, borderless, elevated by soft layered shadows.

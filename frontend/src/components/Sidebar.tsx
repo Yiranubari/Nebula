@@ -207,12 +207,12 @@ const Sidebar: React.FC<SidebarProps> = ({
               onClick={variant === "mobile" ? onClose : undefined}
               className={`relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
                 active
-                  ? "bg-gradient-to-r from-indigo-500/15 to-purple-500/10 text-indigo-700 dark:text-white border-indigo-500/20 dark:border-white/10 shadow-sm shadow-indigo-500/10"
+                  ? "bg-indigo-500/10 text-indigo-700 dark:text-white border-indigo-500/20 dark:border-white/10 shadow-sm"
                   : "text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white border-transparent"
               }`}
             >
               {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-gradient-to-b from-indigo-400 to-purple-500" />
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-indigo-500" />
               )}
               <item.icon
                 size={18}
@@ -228,8 +228,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <span
                     className={`ml-auto inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white shadow ${
                       (item as any).badgeTone === "live"
-                        ? "bg-gradient-to-r from-emerald-500 to-green-500"
-                        : "bg-gradient-to-r from-amber-400 to-pink-500"
+                        ? "bg-emerald-500"
+                        : "bg-amber-500"
                     } ${pulse ? "animate-bounce" : ""}`}
                   >
                     {(item as any).badgeTone === "live" && (

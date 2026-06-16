@@ -129,7 +129,7 @@ const AdminPanel = () => {
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
+        <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <BrainCircuit size={24} />
         </div>
         <div>
@@ -243,7 +243,7 @@ const AdminPanel = () => {
             type="submit"
             disabled={isInviting}
             aria-busy={isInviting}
-            className="px-5 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-lg text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm"
+            className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm"
           >
             {isInviting ? (
               <Spinner size={16} className="text-white" />

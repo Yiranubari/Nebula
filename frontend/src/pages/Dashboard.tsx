@@ -135,7 +135,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="glass-panel p-6 rounded-2xl h-96 relative">
           <h3 className="text-base font-medium text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2 tracking-tight">
-            <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-indigo-400 to-purple-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
             Task Distribution
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 font-light">
@@ -197,7 +197,7 @@ const Dashboard = () => {
 
         <div className="glass-panel p-6 rounded-2xl h-96">
           <h3 className="text-base font-medium text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2 tracking-tight">
-            <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
             Team Workload
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 font-light">

@@ -11,7 +11,7 @@ const Members: React.FC = () => {
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
+        <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <Users size={20} />
         </div>
         <div>
@@ -57,7 +57,7 @@ const Members: React.FC = () => {
                   </Link>
                   <Link
                     to={`/inbox?with=${u.id}`}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-sm"
+                    className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm"
                   >
                     Message
                   </Link>

@@ -192,10 +192,10 @@ const Login = () => {
       </div>
       <div className="relative z-10 bg-white/[0.03] backdrop-blur-xl w-[90%] max-w-md rounded-3xl shadow-[0_8px_40px_rgba(15,23,42,0.4)] border border-white/[0.06] p-7 text-white">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-[0_0_28px_rgba(99,102,241,0.35)]">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">
             <LogIn size={20} strokeWidth={1.75} />
           </div>
-          <h1 className="text-xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+          <h1 className="text-xl font-semibold tracking-tight text-white">
             {mode === "login"
               ? "Sign in to Nebula"
               : mode === "forgot"
@@ -247,7 +247,7 @@ const Login = () => {
               type="submit"
               disabled={isSigningIn}
               aria-busy={isSigningIn}
-              className={`w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium inline-flex items-center justify-center gap-2 shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow ${
+              className={`w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium inline-flex items-center justify-center gap-2 shadow-sm ${
                 isSigningIn ? "opacity-80 cursor-not-allowed" : ""
               }`}
             >
@@ -292,7 +292,7 @@ const Login = () => {
             </div>
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow"
+              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-sm"
             >
               Send OTP
             </button>
@@ -354,7 +354,7 @@ const Login = () => {
             </div>
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow"
+              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-sm"
             >
               Verify OTP
             </button>
@@ -427,7 +427,7 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-[0_0_28px_rgba(99,102,241,0.25)] hover:shadow-[0_0_36px_rgba(99,102,241,0.35)] transition-shadow"
+              className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium shadow-sm"
             >
               Reset Password
             </button>

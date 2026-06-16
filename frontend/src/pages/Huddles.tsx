@@ -32,7 +32,7 @@ const Huddles = () => {
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
+        <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-600 dark:text-indigo-200 border border-indigo-500/20">
           <PhoneCall size={20} />
         </div>
         <div>
@@ -64,8 +64,8 @@ const Huddles = () => {
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border ${
                     isLive
-                      ? "bg-gradient-to-br from-emerald-500/25 to-green-500/20 text-emerald-500 dark:text-emerald-300 border-emerald-500/40"
-                      : "bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-600 dark:text-indigo-200 border-indigo-500/20"
+                      ? "bg-emerald-500/15 text-emerald-500 dark:text-emerald-300 border-emerald-500/40"
+                      : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-200 border-indigo-500/20"
                   }`}
                 >
                   <Hash size={18} />

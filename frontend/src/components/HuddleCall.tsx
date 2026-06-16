@@ -144,7 +144,7 @@ export default function HuddleCall({
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0e1a] text-slate-100">
       <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/5">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-500/30 text-white font-bold text-sm">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/30 text-white font-bold text-sm">
             #
           </div>
           <div className="min-w-0">
