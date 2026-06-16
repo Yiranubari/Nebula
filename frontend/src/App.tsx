@@ -287,7 +287,30 @@ function App() {
           <SocketConnector>
             <CallProvider>
               <HashRouter>
-                <Toaster position="top-right" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white' }} />
+                <Toaster
+                  position="top-right"
+                  reverseOrder={false}
+                  gutter={10}
+                  toastOptions={{
+                    duration: 3500,
+                    className:
+                      "!bg-white dark:!bg-slate-900/90 !text-slate-800 dark:!text-slate-100 " +
+                      "!border !border-slate-200 dark:!border-white/10 " +
+                      "!rounded-xl !shadow-[0_10px_25px_-5px_rgba(15,23,42,0.15)] " +
+                      "dark:!shadow-[0_12px_30px_-8px_rgba(0,0,0,0.55)] " +
+                      "!backdrop-blur-xl !px-4 !py-3 !text-sm !font-medium",
+                    success: {
+                      iconTheme: { primary: "#10b981", secondary: "#ffffff" },
+                    },
+                    error: {
+                      iconTheme: { primary: "#ef4444", secondary: "#ffffff" },
+                      duration: 5000,
+                    },
+                    loading: {
+                      iconTheme: { primary: "#6366f1", secondary: "#ffffff" },
+                    },
+                  }}
+                />
                 <ConnectionBanner />
                 <Layout>
                   <ErrorBoundary>
